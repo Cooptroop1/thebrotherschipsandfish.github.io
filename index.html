@@ -5,9 +5,10 @@
      crossorigin="anonymous"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="The Brothers Chips and Fish - Mobile fish and chip van in Breckland, serving fresh cod, haddock, and chips at events and markets.">
-    <meta name="keywords" content="fish and chips, Breckland, mobile food van, army base event, Norfolk">
-    <title>The Brothers Chips and Fish - Breckland</title>
+    <meta name="description" content="The Brothers Chips and Fish - Mobile fish and chip van in Breckland, Norfolk. Fresh cod, haddock, chips and more at events, markets and army bases. 5-star hygiene rating.">
+    <meta name="keywords" content="fish and chips, Breckland, mobile food van, army base event, Norfolk, fresh cod, haddock, chips">
+    <title>The Brothers Chips and Fish - Breckland's Favourite Mobile Fish & Chip Van</title>
+
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-18KNL6QGV9"></script>
     <script>
@@ -16,6 +17,27 @@
       gtag('js', new Date());
       gtag('config', 'G-18KNL6QGV9');
     </script>
+
+    <!-- Structured Data for Google (fixes AdSense warning + rich results) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FoodTruck",
+      "name": "The Brothers Chips and Fish",
+      "description": "Mobile fish and chip van serving fresh cod, haddock, chips and more across Breckland, Norfolk. 5-star hygiene rating.",
+      "url": "https://www.thebrotherschipsandfish.co.uk",
+      "image": "https://thebrotherschipsandfish.co.uk/images/Large Cod & Chips & Mushy Peas.jpg",
+      "priceRange": "£",
+      "servesCuisine": "Fish and Chips",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Breckland",
+        "addressRegion": "Norfolk",
+        "addressCountry": "GB"
+      }
+    }
+    </script>
+
     <!-- Cookie Consent for GDPR -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3/build/cookieconsent.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/cookieconsent@3/build/cookieconsent.min.js" data-cfasync="false"></script>
@@ -35,6 +57,7 @@
         });
       });
     </script>
+
     <link href="https://fonts.googleapis.com/css2?family=Lobster&display=swap" rel="stylesheet">
     <style>
         /* Reset default styles */
@@ -43,7 +66,6 @@
             padding: 0;
             box-sizing: border-box;
         }
-
         /* Base styles */
         body {
             font-family: Arial, sans-serif;
@@ -51,7 +73,6 @@
             color: #e0e0e0; /* Light gray for readability */
             line-height: 1.6;
         }
-
         /* Container for content */
         .container {
             max-width: 1200px;
@@ -59,7 +80,6 @@
             margin: 0 auto;
             padding: 20px;
         }
-
         /* Header */
         header {
             background-color: #0a0a0a;
@@ -67,44 +87,36 @@
             padding: 35px 0;
             text-align: center;
         }
-
         .site-title {
             font-family: 'Lobster', cursive;
             font-size: 6rem;
         }
-
         /* Navigation */
         nav {
             background-color: #2a2a2a;
             padding: 10px 0;
         }
-
         nav ul {
             list-style: none;
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
         }
-
         nav li {
             margin: 0 15px;
         }
-
         nav a {
             color: #e0e0e0;
             text-decoration: none;
             font-size: 1.1rem;
         }
-
         nav a:hover, nav a.active {
             color: #ff4d4d; /* Red highlight */
         }
-
         /* Main content */
         main {
             margin: 20px 0;
         }
-
         .section-title {
             font-family: 'Lobster', cursive;
             font-size: 5rem;
@@ -112,75 +124,63 @@
             margin-bottom: 20px;
             color: #ff4d4d;
         }
-
         /* Gallery */
         .gallery-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 15px;
         }
-
         .gallery-item {
             background-color: #2a2a2a;
             padding: 10px;
             border-radius: 5px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
-
         .gallery-image {
             width: 100%;
             height: 200px;
             object-fit: cover;
             border-radius: 5px;
         }
-
         .price-title {
             display: flex;
             justify-content: space-between;
             font-weight: bold;
             margin: 10px 0;
         }
-
         .description {
             font-size: 0.9rem;
             color: #b0b0b0;
         }
-
         /* Menu */
         .three-column-menu {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
         }
-
         .menu-category {
             font-family: 'Lobster', cursive;
             font-size: 1.8rem;
             margin-bottom: 10px;
             color: #e0e0e0;
         }
-
         .menu-item {
             display: flex;
             justify-content: space-between;
             margin-bottom: 8px;
             font-size: 0.95rem;
         }
-
         .menu-item span {
             flex: 1;
         }
-
         .menu-item .price {
             text-align: right;
             flex: 0 0 80px;
         }
-
         /* Hygiene and Locations */
         .hygiene-section, .locations-section {
             margin-top: 40px;
         }
-
         /* Footer */
         footer {
             background-color: #0a0a0a;
@@ -189,12 +189,10 @@
             padding: 15px 0;
             margin-top: 40px;
         }
-
         .hidden-link {
             color: inherit;
             text-decoration: none;
         }
-
         /* Modal */
         .modal {
             display: none;
@@ -207,7 +205,6 @@
             background-color: rgba(0, 0, 0, 0.5);
             padding-top: 60px;
         }
-
         .modal-content {
             background-color: #2a2a2a;
             color: #e0e0e0;
@@ -218,7 +215,6 @@
             max-width: 500px;
             position: relative;
         }
-
         .close {
             color: #e0e0e0;
             position: absolute;
@@ -227,61 +223,48 @@
             font-size: 24px;
             cursor: pointer;
         }
-
         .close:hover {
             color: #ff4d4d;
         }
-
         /* Responsive styles */
         @media (max-width: 768px) {
             .site-title {
                 font-size: 2rem;
             }
-
             nav ul {
                 flex-direction: column;
                 text-align: center;
             }
-
             nav li {
                 margin: 10px 0;
             }
-
             .section-title {
                 font-size: 2rem;
             }
-
             .menu-category {
                 font-size: 1.5rem;
             }
-
             .gallery-image {
                 height: 150px;
             }
-
             .three-column-menu {
                 grid-template-columns: 1fr;
             }
         }
-
         @media (max-width: 480px) {
             .container {
                 width: 95%;
                 padding: 10px;
             }
-
             .site-title {
                 font-size: 1.5rem;
             }
-
             .section-title {
                 font-size: 1.8rem;
             }
-
             .menu-item {
                 font-size: 0.85rem;
             }
-
             .gallery-item {
                 padding: 8px;
             }
@@ -294,7 +277,6 @@
             <h1 class="site-title">The Brothers Chips and Fish</h1>
         </div>
     </header>
-
     <nav>
         <ul>
             <li><a href="#gallery" class="active">Menu</a></li>
@@ -303,8 +285,18 @@
             <li><a href="#contact">Contact</a></li>
         </ul>
     </nav>
-
     <main class="container">
+
+        <!-- PUBLISHER CONTENT BOX – This fixes the Google Ads "Needs attention" warning -->
+        <div style="background:#2a2a2a; border:2px solid #ff4d4d; border-radius:8px; padding:25px; margin-bottom:30px; text-align:center;">
+            <h2 style="color:#ff4d4d; font-family:'Lobster', cursive; font-size:2.2rem;">Welcome to The Brothers Chips and Fish</h2>
+            <p style="font-size:1.05rem; line-height:1.6; color:#e0e0e0;">
+                Hi, we're The Brothers – a family-run mobile fish & chip van serving fresh cod, haddock, jumbo sausages and hand-cut chips across Breckland, Norfolk. 
+                We only use the best quality ingredients and cook everything fresh to order at events, markets and army bases. 
+                <strong>5-star Food Hygiene Rating</strong> and fully licensed. Come and say hello – we love what we do!
+            </p>
+        </div>
+
         <section id="gallery">
             <h2 class="section-title">Menu / Price List</h2>
             <div class="gallery-grid">
@@ -473,7 +465,7 @@
 
     <footer>
         <a href="/privacy.html">Privacy Policy</a>
-        <p>© 2026 The Brothers Chips and Fis<a href="#" id="hidden-link" class="hidden-link">h</a>. All rights reserved.</p>
+        <p>© 2026 The Brothers Chips and Fish. All rights reserved.</p>
     </footer>
 
     <div id="popup-modal" class="modal">
@@ -492,16 +484,13 @@
         var modal = document.getElementById("popup-modal");
         var link = document.getElementById("hidden-link");
         var span = document.getElementsByClassName("close")[0];
-
         link.onclick = function(event) {
             event.preventDefault();
             modal.style.display = "block";
         };
-
         span.onclick = function() {
             modal.style.display = "none";
         };
-
         window.onclick = function(event) {
             if (event.target == modal) {
                 modal.style.display = "none";

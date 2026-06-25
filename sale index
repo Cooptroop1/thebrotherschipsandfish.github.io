@@ -1,0 +1,28 @@
+<!-- 🔥 BUSINESS FOR SALE BANNER AT THE TOP 🔥 -->
+    <div class="sale-banner">
+        <h2>🚨 COMPLETE FISH & CHIP BUSINESS FOR SALE 🚨</h2>
+        <p style="font-size:1.35rem; margin:10px 0;">We are selling our successful mobile fish and chip van as a complete ready-to-go operation.</p>
+        
+        <ul>
+            <li>✅ Iveco Daily truck (fully converted fish & chip van)</li>
+            <li>✅ 3-pan Regal range</li>
+            <li>✅ Plus a lot of other professional equipment</li>
+        </ul>
+        
+        <p style="font-size:1.4rem; margin:15px 0;">This gives you everything you need to operate a mobile fish and chip business.</p>
+        
+        <p style="font-size:1.3rem; background:rgba(0,0,0,0.5); padding:12px; border-radius:8px;">
+            Buyer will need to arrange their own licences and insurances to trade.
+        </p>
+        
+        <div class="price-warning">
+            💼 Serious buyers only • No time wasters<br>
+            This is a premium business and not cheap.<br>
+            <strong>Offers below £35,000 will not be replied to.</strong>
+        </div>
+        
+        <p style="font-size:1.5rem; margin-top:15px;">
+            👉 Please use the contact form below to send us your details.<br>
+            Genuine enquiries only.
+        </p>
+    </div>

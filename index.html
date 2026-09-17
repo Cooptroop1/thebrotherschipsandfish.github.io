@@ -252,14 +252,13 @@
         }
         .cod-ticker { padding: 28px 0 0; }
         .cod-box {
-            display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-            gap: 16px; background: var(--card); border: 1px solid var(--line);
+            display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
+            gap: 12px 24px; background: var(--card); border: 1px solid var(--line);
             border-radius: 16px; padding: 18px 22px;
         }
+        .cod-box .kicker { margin: 0; }
         .cod-box strong { font-family: Fraunces, serif; font-size: 2rem; color: var(--gold); line-height: 1; }
         .cod-box strong small { font-size: 1rem; color: var(--cream); font-weight: 600; }
-        .cod-copy { max-width: 38rem; color: var(--muted); }
-        .cod-copy b { color: var(--cream); }
     </style>
 </head>
 <body>
@@ -300,11 +299,8 @@
     <div class="cod-ticker">
         <div class="wrap">
             <div class="cod-box" id="codPrice">
-                <div>
-                    <p class="kicker">What we pay</p>
-                    <strong id="codLb">… <small>a lb</small></strong>
-                </div>
-                <p class="cod-copy" id="codNote">What this van pays for <b>frozen Atlantic cod</b> — UK dock price plus the usual catering trade on-cost. Not supermarket packs. Updates when HMRC publish a new month.</p>
+                <p class="kicker">Average cod price</p>
+                <strong id="codLb">… <small>a lb</small></strong>
             </div>
         </div>
     </div>
@@ -573,13 +569,10 @@
         };
         (function () {
             var lb = document.getElementById("codLb");
-            var note = document.getElementById("codNote");
             if (!lb) return;
             fetch("/data/cod-price.json", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
                 if (!d || !d.gbp_per_lb) return;
                 lb.innerHTML = "£" + Number(d.gbp_per_lb).toFixed(2) + " <small>a lb</small>";
-                var when = d.month ? (" Latest month: " + d.month + ".") : "";
-                note.innerHTML = "What this van pays for <b>frozen Atlantic cod</b> — about £" + Number(d.gbp_per_kg).toFixed(2) + " / kg. UK dock price plus the usual catering trade on-cost, not supermarket packs." + when;
             }).catch(function () {});
         })();
     </script>

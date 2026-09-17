@@ -5,11 +5,16 @@
      crossorigin="anonymous"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="The Brothers Chips and Fish - Mobile fish and chip van in Breckland, Norfolk. Fresh cod, haddock, chips and more at events, markets and army bases. 5-star hygiene rating.">
-    <meta name="keywords" content="fish and chips, Breckland, mobile food van, army base event, Norfolk, fresh cod, haddock, chips">
-    <title>The Brothers Chips and Fish - Breckland's Favourite Mobile Fish & Chip Van</title>
-
-    <!-- Google tag (gtag.js) -->
+    <meta name="description" content="The Brothers Chips and Fish — family-run mobile fish and chip van in Breckland, Norfolk. Fresh cod, haddock and hand-cut chips. 5-star hygiene. Wednesdays Toftwood, Thursdays Swanton Morley, Fridays Dereham.">
+    <meta name="keywords" content="fish and chips, Breckland, Dereham, Toftwood, Swanton Morley, mobile food van, Norfolk, fresh cod, haddock, chips">
+    <title>The Brothers Chips and Fish | Mobile fish & chips, Breckland</title>
+    <link rel="canonical" href="https://www.thebrotherschipsandfish.co.uk/">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="The Brothers Chips and Fish">
+    <meta property="og:description" content="Family-run mobile fish & chip van. Fresh to order across Breckland, Norfolk. 5-star hygiene.">
+    <meta property="og:url" content="https://www.thebrotherschipsandfish.co.uk/">
+    <meta property="og:image" content="https://www.thebrotherschipsandfish.co.uk/images/Large%20Cod%20%26%20Chips%20%26%20Mushy%20Peas.jpg">
+    <meta name="theme-color" content="#120e0b">
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-18KNL6QGV9"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -17,8 +22,6 @@
       gtag('js', new Date());
       gtag('config', 'G-18KNL6QGV9');
     </script>
-
-    <!-- Structured Data for Google (fixes AdSense warning + rich results) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -37,16 +40,14 @@
       }
     }
     </script>
-
-        <!-- Cookie Consent for GDPR + AdSense (required by Google) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3/build/cookieconsent.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/cookieconsent@3/build/cookieconsent.min.js" data-cfasync="false"></script>
     <script>
       window.addEventListener("load", function(){
         window.cookieconsent.initialise({
           "palette": {
-            "popup": { "background": "#2a2a2a", "text": "#e0e0e0" },
-            "button": { "background": "#ff4d4d" }
+            "popup": { "background": "#1a1510", "text": "#f4ead8" },
+            "button": { "background": "#c9a227", "text": "#120e0b" }
           },
           "content": {
             "message": "We use cookies for Google Analytics and Google AdSense (personalised ads).",
@@ -57,446 +58,496 @@
         });
       });
     </script>
-
-    <link href="https://fonts.googleapis.com/css2?family=Lobster&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Reset default styles */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --ink: #120e0b;
+            --paper: #f4ead8;
+            --cream: #efe4d0;
+            --gold: #c9a227;
+            --gold-soft: #e8c96a;
+            --muted: #b9a894;
+            --card: #1c1713;
+            --line: rgba(201,162,39,.28);
+            --text: #f3efe6;
         }
-        /* Base styles */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
         body {
-            font-family: Arial, sans-serif;
-            background-color: #1e1e1e; /* Softer dark gray */
-            color: #e0e0e0; /* Light gray for readability */
-            line-height: 1.6;
+            font-family: "Source Sans 3", system-ui, sans-serif;
+            background: var(--ink);
+            color: var(--text);
+            line-height: 1.55;
         }
-        /* Container for content */
-        .container {
-            max-width: 1200px;
-            width: 90%;
-            margin: 0 auto;
-            padding: 20px;
+        img { max-width: 100%; display: block; }
+        a { color: var(--gold-soft); }
+        .wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+        .topbar {
+            position: sticky; top: 0; z-index: 40;
+            background: rgba(18,14,11,.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--line);
         }
-        /* Header */
-        header {
-            background-color: #0a0a0a;
-            color: #e0e0e0;
-            padding: 35px 0;
-            text-align: center;
+        .topbar-inner {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 16px; padding: 12px 0;
         }
-        .site-title {
-            font-family: 'Lobster', cursive;
-            font-size: 6rem;
+        .brand {
+            font-family: Fraunces, Georgia, serif;
+            font-weight: 700; font-size: 1.15rem;
+            color: var(--paper); text-decoration: none; letter-spacing: .02em;
         }
-        /* Navigation */
-        nav {
-            background-color: #2a2a2a;
-            padding: 10px 0;
-        }
-        nav ul {
-            list-style: none;
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        nav li {
-            margin: 0 15px;
-        }
+        .brand span { color: var(--gold); }
+        nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; }
         nav a {
-            color: #e0e0e0;
-            text-decoration: none;
-            font-size: 1.1rem;
+            color: var(--cream); text-decoration: none; font-weight: 600;
+            font-size: .92rem; letter-spacing: .04em; text-transform: uppercase;
         }
-        nav a:hover, nav a.active {
-            color: #ff4d4d; /* Red highlight */
+        nav a:hover { color: var(--gold); }
+        .hero {
+            position: relative; min-height: min(78vh, 640px);
+            display: grid; place-items: end stretch;
+            background: #000 url("images/Large Cod %26 Chips %26 Mushy Peas.jpg") center/cover no-repeat;
         }
-        /* Main content */
-        main {
-            margin: 20px 0;
+        .hero::before {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(180deg, rgba(18,14,11,.25) 10%, rgba(18,14,11,.88) 100%);
         }
-        .section-title {
-            font-family: 'Lobster', cursive;
-            font-size: 5rem;
-            text-align: center;
-            margin-bottom: 20px;
-            color: #ff4d4d;
+        .hero-copy { position: relative; padding: 48px 0 56px; }
+        .eyebrow {
+            display: inline-block; color: var(--gold);
+            font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+            font-size: .78rem; margin-bottom: 12px;
         }
-        /* Gallery */
-        .gallery-grid {
+        h1 {
+            font-family: Fraunces, Georgia, serif;
+            font-size: clamp(2.4rem, 6vw, 4.4rem);
+            line-height: 1.05; max-width: 14ch; color: #fff;
+            font-weight: 700;
+        }
+        .hero p { max-width: 40rem; margin: 16px 0 22px; color: var(--cream); font-size: 1.12rem; }
+        .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            background: var(--gold); color: var(--ink); text-decoration: none;
+            font-weight: 700; padding: 12px 20px; border-radius: 999px;
+            border: 0; cursor: pointer; font-size: 1rem;
+        }
+        .btn:hover { background: var(--gold-soft); color: var(--ink); }
+        .btn-ghost {
+            background: transparent; color: var(--paper);
+            border: 1px solid var(--gold);
+        }
+        .trust {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 1px; background: var(--line); border-top: 1px solid var(--line);
+        }
+        .trust div {
+            background: var(--ink); padding: 22px 16px; text-align: center;
+        }
+        .trust strong { display: block; color: var(--gold); font-family: Fraunces, serif; font-size: 1.15rem; }
+        .trust span { color: var(--muted); font-size: .88rem; }
+        section { padding: 64px 0; }
+        .kicker { color: var(--gold); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; font-size: .75rem; }
+        h2 {
+            font-family: Fraunces, Georgia, serif;
+            font-size: clamp(1.8rem, 4vw, 2.6rem);
+            margin: 6px 0 10px; color: var(--paper);
+        }
+        .lead { color: var(--muted); max-width: 40rem; margin-bottom: 28px; }
+        .gallery {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
         }
-        .gallery-item {
-            background-color: #2a2a2a;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex; flex-direction: column;
         }
-        .gallery-image {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-            border-radius: 5px;
+        .card img {
+            width: 100%; height: 210px; object-fit: cover;
+            transition: transform .4s ease;
         }
-        .price-title {
-            display: flex;
-            justify-content: space-between;
-            font-weight: bold;
-            margin: 10px 0;
+        .card:hover img { transform: scale(1.04); }
+        .card-body { padding: 14px 16px 18px; }
+        .price-row {
+            display: flex; justify-content: space-between; gap: 10px;
+            align-items: baseline; font-weight: 700;
         }
-        .description {
-            font-size: 0.9rem;
-            color: #b0b0b0;
+        .price-row span:last-child { color: var(--gold); white-space: nowrap; }
+        .card-body p { color: var(--muted); font-size: .92rem; margin-top: 6px; }
+        .menu-board {
+            background: var(--paper); color: #2a2218;
+            border-radius: 20px; padding: 28px 22px;
         }
-        /* Menu */
-        .three-column-menu {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+        .menu-board h2 { color: #2a2218; }
+        .menu-board .lead { color: #6b5c48; }
+        .menu-cols {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px 32px;
         }
-        .menu-category {
-            font-family: 'Lobster', cursive;
-            font-size: 1.8rem;
-            margin-bottom: 10px;
-            color: #e0e0e0;
+        .menu-cols h3 {
+            font-family: Fraunces, serif; font-size: 1.25rem;
+            border-bottom: 1px solid #d9c9a6; padding-bottom: 6px; margin: 18px 0 10px;
         }
-        .menu-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 0.95rem;
+        .row { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: .98rem; }
+        .row b { font-weight: 700; color: #8a6a12; }
+        .note { font-size: .9rem; color: #6b5c48; font-style: italic; }
+        .stops { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .stop {
+            background: var(--card); border: 1px solid var(--line);
+            border-radius: 16px; padding: 22px;
         }
-        .menu-item span {
-            flex: 1;
+        .day { color: var(--gold); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: .78rem; }
+        .stop h3 { font-family: Fraunces, serif; font-size: 1.35rem; margin: 8px 0 6px; }
+        .stop p { color: var(--muted); }
+        .hygiene {
+            display: grid; grid-template-columns: 1.1fr .9fr; gap: 28px; align-items: center;
         }
-        .menu-item .price {
-            text-align: right;
-            flex: 0 0 80px;
+        .badge {
+            border: 1px solid var(--gold); color: var(--gold);
+            display: inline-block; padding: 6px 12px; border-radius: 999px;
+            font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: .78rem;
         }
-        /* Hygiene and Locations */
-        .hygiene-section, .locations-section {
-            margin-top: 40px;
+        form {
+            background: var(--card); border: 1px solid var(--line);
+            border-radius: 16px; padding: 22px; max-width: 560px;
         }
-        /* Footer */
+        label { display: block; font-weight: 600; margin: 10px 0 6px; }
+        input, textarea {
+            width: 100%; background: #120e0b; color: var(--paper);
+            border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px;
+            font: inherit;
+        }
+        input:focus, textarea:focus { outline: 2px solid var(--gold); border-color: transparent; }
         footer {
-            background-color: #0a0a0a;
-            color: #e0e0e0;
-            text-align: center;
-            padding: 15px 0;
-            margin-top: 40px;
+            border-top: 1px solid var(--line);
+            padding: 28px 0 40px; color: var(--muted); text-align: center;
         }
-        .hidden-link {
-            color: inherit;
-            text-decoration: none;
-        }
-        /* Modal */
+        footer a { color: var(--gold-soft); text-decoration: none; }
+        .social { margin: 8px 0 14px; }
+        .social a { margin: 0 8px; font-weight: 700; }
         .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            padding-top: 60px;
+            display: none; position: fixed; inset: 0; z-index: 1000;
+            background: rgba(0,0,0,.65); padding: 24px;
         }
         .modal-content {
-            background-color: #2a2a2a;
-            color: #e0e0e0;
-            margin: 5% auto;
-            padding: 20px;
-            border-radius: 5px;
-            width: 80%;
-            max-width: 500px;
-            position: relative;
+            background: var(--paper); color: #2a2218;
+            margin: 10vh auto; padding: 28px; border-radius: 16px;
+            width: min(440px, 100%); position: relative;
         }
-        .close {
-            color: #e0e0e0;
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 24px;
-            cursor: pointer;
+        .close { position: absolute; top: 10px; right: 14px; cursor: pointer; font-size: 1.6rem; }
+        @media (max-width: 900px) {
+            .gallery, .menu-cols, .stops, .trust, .hygiene { grid-template-columns: 1fr 1fr; }
         }
-        .close:hover {
-            color: #ff4d4d;
-        }
-        /* Responsive styles */
-        @media (max-width: 768px) {
-            .site-title {
-                font-size: 2rem;
-            }
-            nav ul {
-                flex-direction: column;
-                text-align: center;
-            }
-            nav li {
-                margin: 10px 0;
-            }
-            .section-title {
-                font-size: 2rem;
-            }
-            .menu-category {
-                font-size: 1.5rem;
-            }
-            .gallery-image {
-                height: 150px;
-            }
-            .three-column-menu {
-                grid-template-columns: 1fr;
-            }
-        }
-        @media (max-width: 480px) {
-            .container {
-                width: 95%;
-                padding: 10px;
-            }
-            .site-title {
-                font-size: 1.5rem;
-            }
-            .section-title {
-                font-size: 1.8rem;
-            }
-            .menu-item {
-                font-size: 0.85rem;
-            }
-            .gallery-item {
-                padding: 8px;
-            }
+        @media (max-width: 700px) {
+            .topbar-inner { flex-direction: column; align-items: flex-start; }
+            .gallery, .menu-cols, .stops, .trust, .hygiene { grid-template-columns: 1fr; }
+            .hero { min-height: 72vh; }
+            .card img { height: 240px; }
         }
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <h1 class="site-title">The Brothers Chips and Fish</h1>
+    <header class="topbar">
+        <div class="wrap topbar-inner">
+            <a class="brand" href="/">The Brothers <span>Chips & Fish</span></a>
+            <nav>
+                <ul>
+                    <li><a href="#gallery">On the van</a></li>
+                    <li><a href="#menu">Price list</a></li>
+                    <li><a href="#hours">Where we are</a></li>
+                    <li><a href="#hygiene">Hygiene</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </nav>
         </div>
     </header>
-    <nav>
-        <ul>
-            <li><a href="#gallery" class="active">Menu</a></li>
-            <li><a href="#hours">Hours & Locations</a></li>
-            <li><a href="#hygiene">Hygiene</a></li>
-            <li><a href="#contact">Contact</a></li>
-        </ul>
-    </nav>
-    <main class="container">
 
-        <!-- PUBLISHER CONTENT BOX – This fixes the Google Ads "Needs attention" warning -->
-        <div style="background:#2a2a2a; border:2px solid #ff4d4d; border-radius:8px; padding:25px; margin-bottom:30px; text-align:center;">
-            <h2 style="color:#ff4d4d; font-family:'Lobster', cursive; font-size:2.2rem;">Welcome to The Brothers Chips and Fish</h2>
-            <p style="font-size:1.05rem; line-height:1.6; color:#e0e0e0;">
-                Hi, we're The Brothers – a family-run mobile fish & chip van serving fresh cod, haddock, jumbo sausages and hand-cut chips across Breckland, Norfolk. 
-                We only use the best quality ingredients and cook everything fresh to order. 
-                <strong>5-star Food Hygiene Rating</strong> and fully licensed. Come and say hello – we love what we do!
-            </p>
+    <section class="hero">
+        <div class="wrap hero-copy">
+            <p class="eyebrow">Breckland · Norfolk · Family van</p>
+            <h1>Proper fish & chips, cooked to order</h1>
+            <p>We’re The Brothers — a family-run mobile fish and chip van. Fresh cod, haddock, jumbo sausages and hand-cut chips. 5-star hygiene, fully licensed with Breckland.</p>
+            <div class="actions">
+                <a class="btn" href="#hours">This week’s stops</a>
+                <a class="btn btn-ghost" href="#gallery">See the food</a>
+            </div>
         </div>
+    </section>
 
+    <div class="trust">
+        <div><strong>5-star</strong><span>Food hygiene rating</span></div>
+        <div><strong>Fresh to order</strong><span>Nothing sitting under a lamp</span></div>
+        <div><strong>Hand-cut chips</strong><span>And quality fish, always</span></div>
+        <div><strong>Licensed</strong><span>Street food with Breckland</span></div>
+    </div>
+
+    <main>
         <section id="gallery">
-            <h2 class="section-title">Menu / Price List</h2>
-            <div class="gallery-grid">
-                <div class="gallery-item">
-                    <img src="images/Large Cod & Chips & Mushy Peas.jpg" alt="Large Cod & Chips & Mushy Peas" class="gallery-image">
-                    <p class="price-title"><span>Large Cod & Chips & Mushy Peas</span><span class="price">£11.40</span></p>
-                    <p class="description">Delicious piece of cod filleted and skinned with a portion of hand cut chips</p>
-                </div>
-                <div class="gallery-item">
-                    <img src="images/Medium Haddock & Chips.jpg" alt="Medium Haddock & Chips" class="gallery-image">
-                    <p class="price-title"><span>Medium Haddock & Chips</span><span class="price">£9.40</span></p>
-                    <p class="description">Delicious piece of Haddock filleted with a portion of hand cut chips</p>
-                </div>
-                <div class="gallery-item">
-                    <img src="images/Plaice & Chips.jpg" alt="Plaice & Chips" class="gallery-image">
-                    <p class="price-title"><span>Plaice & Chips</span><span class="price">£9.50</span></p>
-                    <p class="description">Golden delicate Plaice cooked to perfection with a portion of hand cut chips</p>
-                </div>
-                <div class="gallery-item">
-                    <img src="images/Cod Goujons & Chips.jpg" alt="Cod Goujons & Chips" class="gallery-image">
-                    <p class="price-title"><span>Cod Goujons & Chips</span><span class="price">£9.20</span></p>
-                    <p class="description">Delicious goujons of Cod fillet battered with a portion of hand cut chips</p>
-                </div>
-                <div class="gallery-item">
-                    <img src="images/Cod Bites & Chips.jpg" alt="Cod Bites & Chips" class="gallery-image">
-                    <p class="price-title"><span>Cod Bites & Chips</span><span class="price">£9.20</span></p>
-                    <p class="description">Delicious chunks of Cod fillet battered with a portion of hand cut chips</p>
-                </div>
-                <div class="gallery-item">
-                    <img src="images/Kids Cod bites & Chips.jpg" alt="Kids Cod bites & Chips" class="gallery-image">
-                    <p class="price-title"><span>Kids Cod bites & Chips</span><span class="price">£4.00</span></p>
-                    <p class="description">Delicious chunks of Cod fillet (3) battered with a portion of hand cut chips and a Drink</p>
-                </div>
-                <div class="gallery-item">
-                    <img src="images/9 Scampi & Chips.jpg" alt="9 Scampi & Chips" class="gallery-image">
-                    <p class="price-title"><span>9 Scampi & Chips</span><span class="price">£8.50</span></p>
-                    <p class="description">Large portion of Whole tail Scampi (9) with Norfolk Colmans Tartare Sauce and a portion of chips</p>
-                </div>
-                <div class="gallery-item">
-                    <img src="images/Sausage & Chips.jpg" alt="Sausage & Chips" class="gallery-image">
-                    <p class="price-title"><span>Sausage & Chips</span><span class="price">£4.10</span></p>
-                    <p class="description">Succulent British Sausage and a portion of hand cut chips</p>
-                </div>
-                <div class="gallery-item">
-                    <img src="images/Jumbo Sausage & Chips.jpg" alt="Jumbo Sausage & Chips" class="gallery-image">
-                    <p class="price-title"><span>Jumbo Sausage & Chips</span><span class="price">£4.75</span></p>
-                    <p class="description">Succulent British Jumbo Sausage and a portion of hand cut chips</p>
-                </div>
-                <div class="gallery-item">
-                    <img src="images/Bigfoot Sausage & Chips.jpg" alt="Bigfoot Sausage & Chips" class="gallery-image">
-                    <p class="price-title"><span>Bigfoot Sausage & Chips</span><span class="price">£5.80</span></p>
-                    <p class="description">Bigfoot Sausage and a portion of hand cut chips</p>
-                </div>
-                <div class="gallery-item">
-                    <img src="images/Jumbo Fish Cake & Chips.jpg" alt="Jumbo Fish Cake & Chips" class="gallery-image">
-                    <p class="price-title"><span>Jumbo Fish Cake & Chips</span><span class="price">£4.20</span></p>
-                    <p class="description">Extra Large fish cake with a portion of hand cut chips</p>
-                </div>
-                <div class="gallery-item">
-                    <img src="images/Mozzarella Sticks.jpg" alt="Mozzarella Sticks" class="gallery-image">
-                    <p class="price-title"><span>Mozzarella Sticks</span><span class="price">£2.20</span></p>
-                    <p class="description">Gooey Cheesey Delicious</p>
-                </div>
-                <div class="gallery-item">
-                    <img src="images/Spicy Chicken Strips & Chips.jpg" alt="Spicy Chicken Strips & Chips" class="gallery-image">
-                    <p class="price-title"><span>Spicy Chicken Strips & Chips</span><span class="price">£6.25</span></p>
-                    <p class="description">Spicy Hot Chicken strips with a portion of hand cut Chips</p>
-                </div>
-                <div class="gallery-item">
-                    <img src="images/Chicken Nuggets & Chips.jpg" alt="Chicken Nuggets & Chips" class="gallery-image">
-                    <p class="price-title"><span>Chicken Nuggets & Chips</span><span class="price">£7.40</span></p>
-                    <p class="description">Large Portion of Chicken Nuggets (9) with a portion of hand cut chips</p>
-                </div>
-            </div>
-        </section>
-
-        <section id="menu" class="hygiene-section">
-            <h2 class="section-title">Menu / Price List</h2>
-            <div class="three-column-menu">
-                <div>
-                    <h3 class="menu-category">Fish</h3>
-                    <div class="menu-item"><span>Medium Cod</span><span class="price">£6.90</span></div>
-                    <div class="menu-item"><span>Large Cod</span><span class="price">£7.90</span></div>
-                    <div class="menu-item"><span>Medium Haddock</span><span class="price">£6.90</span></div>
-                    <div class="menu-item"><span>Large Haddock</span><span class="price">£7.90</span></div>
-                    <div class="menu-item"><span>Plaice</span><span class="price">£7.00</span></div>
-                    <div class="menu-item"><span>Cod Goujons</span><span class="price">£6.70</span></div>
-                    <div class="menu-item"><span>Cod Bites</span><span class="price">£6.70</span></div>
-                    <div class="menu-item"><span>Taster Box</span><span class="price">£7.20</span></div>
-                </div>
-                <div>
-                    <h3 class="menu-category">Chips</h3>
-                    <div class="menu-item"><span>Small Portion</span><span class="price">£2.00</span></div>
-                    <div class="menu-item"><span>Medium Portion</span><span class="price">£2.50</span></div>
-                    <div class="menu-item"><span>Large Portion</span><span class="price">£3.50</span></div>
-                    <h3 class="menu-category">Chicken</h3>
-                    <div class="menu-item"><span>Chicken Nuggets (6)</span><span class="price">£2.80</span></div>
-                    <div class="menu-item"><span>Chicken Nuggets (9)</span><span class="price">£3.90</span></div>
-                    <div class="menu-item"><span>Spicy Chicken Strips (4)</span><span class="price">£3.75</span></div>
-                </div>
-                <div>
-                    <h3 class="menu-category">Sauces</h3>
-                    <div class="menu-item"><span>Mushy Peas</span><span class="price">£1.00</span></div>
-                    <div class="menu-item"><span>Curry Sauce</span><span class="price">£1.00</span></div>
-                    <div class="menu-item"><span>Gravy</span><span class="price">£1.00</span></div>
-                    <div class="menu-item"><span>Tomato Ketchup Pot</span><span class="price">£0.25</span></div>
-                    <div class="menu-item"><span>Colman's Norfolk Tartare Sauce</span><span class="price">£0.40</span></div>
-                </div>
-            </div>
-            <div class="three-column-menu">
-                <div>
-                    <h3 class="menu-category">Sausages</h3>
-                    <div class="menu-item"><span>Battered Sausage</span><span class="price">£1.60</span></div>
-                    <div class="menu-item"><span>Battered Jumbo Sausage</span><span class="price">£2.25</span></div>
-                    <div class="menu-item"><span>Battered Bigfoot Sausage</span><span class="price">£3.30</span></div>
-                </div>
-                <div>
-                    <h3 class="menu-category">Scampi</h3>
-                    <div class="menu-item"><span>Whole Tail Scampi</span></div>
-                    <div class="menu-item"><span>Medium Scampi (6)</span><span class="price">£3.95</span></div>
-                    <div class="menu-item"><span>Large Scampi (9)</span><span class="price">£5.60</span></div>
-                    <div class="menu-item"><span>Served with Colman's Norfolk Tartare Sauce</span></div>
-                </div>
-                <div>
-                    <h3 class="menu-category">Extras</h3>
-                    <div class="menu-item"><span>Jumbo Fish Cake</span><span class="price">£1.70</span></div>
-                    <div class="menu-item"><span>Spring Roll</span><span class="price">£2.00</span></div>
-                    <div class="menu-item"><span>Veg Roll</span><span class="price">£2.00</span></div>
-                    <div class="menu-item"><span>Mozzarella Sticks</span><span class="price">£2.20</span></div>
-                    <div class="menu-item"><span>Buttered Roll</span><span class="price">£0.85</span></div>
-                    <div class="menu-item"><span>Pineapple Fritter</span><span class="price">£1.35</span></div>
-                    <div class="menu-item"><span>Battered Mars Bar</span><span class="price">£1.50</span></div>
+            <div class="wrap">
+                <p class="kicker">What we cook</p>
+                <h2>On the van</h2>
+                <p class="lead">Our food, our photos. Prices shown are meal deals as plated. Full extras and singles are on the price list below.</p>
+                <div class="gallery">
+                    <article class="card">
+                        <img src="images/Large Cod & Chips & Mushy Peas.jpg" alt="Large Cod & Chips & Mushy Peas" width="800" height="600">
+                        <div class="card-body">
+                            <p class="price-row"><span>Large Cod & Chips & Mushy Peas</span><span>£11.40</span></p>
+                            <p>Cod filleted and skinned with a portion of hand-cut chips.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img src="images/Medium Haddock & Chips.jpg" alt="Medium Haddock & Chips" width="800" height="600" loading="lazy">
+                        <div class="card-body">
+                            <p class="price-row"><span>Medium Haddock & Chips</span><span>£9.40</span></p>
+                            <p>Haddock filleted with a portion of hand-cut chips.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img src="images/Plaice & Chips.jpg" alt="Plaice & Chips" width="800" height="600" loading="lazy">
+                        <div class="card-body">
+                            <p class="price-row"><span>Plaice & Chips</span><span>£9.50</span></p>
+                            <p>Golden plaice cooked to order with hand-cut chips.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img src="images/Cod Goujons & Chips.jpg" alt="Cod Goujons & Chips" width="800" height="600" loading="lazy">
+                        <div class="card-body">
+                            <p class="price-row"><span>Cod Goujons & Chips</span><span>£9.20</span></p>
+                            <p>Goujons of cod fillet, battered, with chips.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img src="images/Cod Bites & Chips.jpg" alt="Cod Bites & Chips" width="800" height="600" loading="lazy">
+                        <div class="card-body">
+                            <p class="price-row"><span>Cod Bites & Chips</span><span>£9.20</span></p>
+                            <p>Chunks of cod fillet, battered, with chips.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img src="images/Kids Cod bites & Chips.jpg" alt="Kids Cod bites & Chips" width="800" height="600" loading="lazy">
+                        <div class="card-body">
+                            <p class="price-row"><span>Kids Cod bites & Chips</span><span>£4.00</span></p>
+                            <p>Three battered cod bites, chips and a drink.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img src="images/9 Scampi & Chips.jpg" alt="9 Scampi & Chips" width="800" height="600" loading="lazy">
+                        <div class="card-body">
+                            <p class="price-row"><span>9 Scampi & Chips</span><span>£8.50</span></p>
+                            <p>Whole tail scampi (9) with Norfolk Colman’s tartare and chips.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img src="images/Sausage & Chips.jpg" alt="Sausage & Chips" width="800" height="600" loading="lazy">
+                        <div class="card-body">
+                            <p class="price-row"><span>Sausage & Chips</span><span>£4.10</span></p>
+                            <p>British sausage and a portion of hand-cut chips.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img src="images/Jumbo Sausage & Chips.jpg" alt="Jumbo Sausage & Chips" width="800" height="600" loading="lazy">
+                        <div class="card-body">
+                            <p class="price-row"><span>Jumbo Sausage & Chips</span><span>£4.75</span></p>
+                            <p>British jumbo sausage and hand-cut chips.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img src="images/Bigfoot Sausage & Chips.jpg" alt="Bigfoot Sausage & Chips" width="800" height="600" loading="lazy">
+                        <div class="card-body">
+                            <p class="price-row"><span>Bigfoot Sausage & Chips</span><span>£5.80</span></p>
+                            <p>Bigfoot sausage and a portion of hand-cut chips.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img src="images/Jumbo Fish Cake & Chips.jpg" alt="Jumbo Fish Cake & Chips" width="800" height="600" loading="lazy">
+                        <div class="card-body">
+                            <p class="price-row"><span>Jumbo Fish Cake & Chips</span><span>£4.20</span></p>
+                            <p>Extra large fish cake with hand-cut chips.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img src="images/Mozzarella Sticks.jpg" alt="Mozzarella Sticks" width="800" height="600" loading="lazy">
+                        <div class="card-body">
+                            <p class="price-row"><span>Mozzarella Sticks</span><span>£2.20</span></p>
+                            <p>Gooey, cheesy, done right.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img src="images/Spicy Chicken Strips & Chips.jpg" alt="Spicy Chicken Strips & Chips" width="800" height="600" loading="lazy">
+                        <div class="card-body">
+                            <p class="price-row"><span>Spicy Chicken Strips & Chips</span><span>£6.25</span></p>
+                            <p>Hot chicken strips with a portion of chips.</p>
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img src="images/Chicken Nuggets & Chips.jpg" alt="Chicken Nuggets & Chips" width="800" height="600" loading="lazy">
+                        <div class="card-body">
+                            <p class="price-row"><span>Chicken Nuggets & Chips</span><span>£7.40</span></p>
+                            <p>Nine nuggets with a portion of hand-cut chips.</p>
+                        </div>
+                    </article>
                 </div>
             </div>
         </section>
 
-        <section id="hours" class="locations-section">
-            <h2 class="section-title">Hours & Locations</h2>
-            <p>New Location</p>
-            <p>Wednesdays we are at Rashes Green Toftwood from 4pm - 6:00pm</p>
-            <p>Thursdays we are at Swanton Morley Village Hall from 4pm - 7:30pm</p>
-            <p>Fridays we are on a side street Near the Neatherd Moor On Gordon road, Dereham 4pm - 7:30pm</p>
-            <p>We cant trade on the Neatherd moor anymore we are gutted but you can Park there please and come over and see us on Gordon Road,</p>
-            <p>Weekly Locations: Follow us on social media for updates!</p>
-            <p><a href="https://www.facebook.com/share/19FBsP2ERr/?mibextid=wwXIfr" style="color: #ff4d4d;">Facebook</a> | <a href="https://instagram.com/thebrotherschipandfish" style="color: #ff4d4d;">Instagram</a></p>
+        <section id="menu">
+            <div class="wrap">
+                <div class="menu-board">
+                    <p class="kicker" style="color:#8a6a12">Full board</p>
+                    <h2>Price list</h2>
+                    <p class="lead">Singles and extras. Meal photos above include chips where it says so.</p>
+                    <div class="menu-cols">
+                        <div>
+                            <h3>Fish</h3>
+                            <div class="row"><span>Medium Cod</span><b>£6.90</b></div>
+                            <div class="row"><span>Large Cod</span><b>£7.90</b></div>
+                            <div class="row"><span>Medium Haddock</span><b>£6.90</b></div>
+                            <div class="row"><span>Large Haddock</span><b>£7.90</b></div>
+                            <div class="row"><span>Plaice</span><b>£7.00</b></div>
+                            <div class="row"><span>Cod Goujons</span><b>£6.70</b></div>
+                            <div class="row"><span>Cod Bites</span><b>£6.70</b></div>
+                            <div class="row"><span>Taster Box</span><b>£7.20</b></div>
+                            <h3>Sausages</h3>
+                            <div class="row"><span>Battered Sausage</span><b>£1.60</b></div>
+                            <div class="row"><span>Battered Jumbo Sausage</span><b>£2.25</b></div>
+                            <div class="row"><span>Battered Bigfoot Sausage</span><b>£3.30</b></div>
+                        </div>
+                        <div>
+                            <h3>Chips</h3>
+                            <div class="row"><span>Small Portion</span><b>£2.00</b></div>
+                            <div class="row"><span>Medium Portion</span><b>£2.50</b></div>
+                            <div class="row"><span>Large Portion</span><b>£3.50</b></div>
+                            <h3>Chicken</h3>
+                            <div class="row"><span>Chicken Nuggets (6)</span><b>£2.80</b></div>
+                            <div class="row"><span>Chicken Nuggets (9)</span><b>£3.90</b></div>
+                            <div class="row"><span>Spicy Chicken Strips (4)</span><b>£3.75</b></div>
+                            <h3>Scampi</h3>
+                            <div class="row"><span>Medium Scampi (6)</span><b>£3.95</b></div>
+                            <div class="row"><span>Large Scampi (9)</span><b>£5.60</b></div>
+                            <p class="note">Served with Colman’s Norfolk tartare sauce.</p>
+                        </div>
+                        <div>
+                            <h3>Sauces</h3>
+                            <div class="row"><span>Mushy Peas</span><b>£1.00</b></div>
+                            <div class="row"><span>Curry Sauce</span><b>£1.00</b></div>
+                            <div class="row"><span>Gravy</span><b>£1.00</b></div>
+                            <div class="row"><span>Tomato Ketchup Pot</span><b>£0.25</b></div>
+                            <div class="row"><span>Colman’s Norfolk Tartare</span><b>£0.40</b></div>
+                            <h3>Extras</h3>
+                            <div class="row"><span>Jumbo Fish Cake</span><b>£1.70</b></div>
+                            <div class="row"><span>Spring Roll</span><b>£2.00</b></div>
+                            <div class="row"><span>Veg Roll</span><b>£2.00</b></div>
+                            <div class="row"><span>Mozzarella Sticks</span><b>£2.20</b></div>
+                            <div class="row"><span>Buttered Roll</span><b>£0.85</b></div>
+                            <div class="row"><span>Pineapple Fritter</span><b>£1.35</b></div>
+                            <div class="row"><span>Battered Mars Bar</span><b>£1.50</b></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
 
-        <section id="hygiene" class="hygiene-section">
-            <h2 class="section-title">Food Hygiene & Safety</h2>
-            <p>5-star hygiene rating, fully Licenced with Breckland to serve street food and we have all-types extinguisher for your safety.</p>
+        <section id="hours">
+            <div class="wrap">
+                <p class="kicker">Find the van</p>
+                <h2>Hours & locations</h2>
+                <p class="lead">Weekly stops. Follow Facebook or Instagram if a pitch moves.</p>
+                <div class="stops">
+                    <article class="stop">
+                        <p class="day">Wednesday</p>
+                        <h3>Rashes Green, Toftwood</h3>
+                        <p>4:00pm – 6:00pm</p>
+                    </article>
+                    <article class="stop">
+                        <p class="day">Thursday</p>
+                        <h3>Swanton Morley Village Hall</h3>
+                        <p>4:00pm – 7:30pm</p>
+                    </article>
+                    <article class="stop">
+                        <p class="day">Friday</p>
+                        <h3>Gordon Road, Dereham</h3>
+                        <p>4:00pm – 7:30pm</p>
+                        <p style="margin-top:10px">Side street near Neatherd Moor. We can’t trade on the Moor any more — park there and walk over to Gordon Road.</p>
+                    </article>
+                </div>
+                <p class="social" style="margin-top:22px">
+                    <a href="https://www.facebook.com/share/19FBsP2ERr/?mibextid=wwXIfr">Facebook</a>
+                    ·
+                    <a href="https://instagram.com/thebrotherschipandfish">Instagram</a>
+                </p>
+            </div>
         </section>
 
-        <section id="contact" class="hygiene-section">
-            <h2 class="section-title">Contact Us</h2>
-            <p>Email: info@thebrotherschipsandfish.co.uk</p>
-            <form action="https://formspree.io/f/xqabdjal" method="POST">
-                <label for="name">Name:</label><br>
-                <input type="text" id="name" name="name" required style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 3px; border: none;"><br>
-                <label for="email">Email:</label><br>
-                <input type="email" id="email" name="email" required style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 3px; border: none;"><br>
-                <label for="message">Message:</label><br>
-                <textarea id="message" name="message" required style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 3px; border: none; height: 100px;"></textarea><br>
-                <button type="submit" style="background-color: #ff4d4d; color: white; padding: 10px 20px; border: none; border-radius: 3px; cursor: pointer;">Send</button>
-            </form>
+        <section id="hygiene">
+            <div class="wrap hygiene">
+                <div>
+                    <p class="kicker">Looked after</p>
+                    <h2>Food hygiene & safety</h2>
+                    <p class="lead">5-star food hygiene rating. Fully licensed with Breckland to serve street food. All-types extinguisher on the van.</p>
+                    <span class="badge">5-star hygiene</span>
+                </div>
+                <div>
+                    <p>Hi, we’re The Brothers — a family-run van serving Breckland. We only use the best quality ingredients and cook everything fresh to order. Come and say hello.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="contact">
+            <div class="wrap">
+                <p class="kicker">Bookings & questions</p>
+                <h2>Contact us</h2>
+                <p class="lead">Email <a href="mailto:info@thebrotherschipsandfish.co.uk">info@thebrotherschipsandfish.co.uk</a> or send a note here.</p>
+                <form action="https://formspree.io/f/xqabdjal" method="POST">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name" required autocomplete="name">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required autocomplete="email">
+                    <label for="message">Message</label>
+                    <textarea id="message" name="message" required rows="5"></textarea>
+                    <button type="submit" class="btn" style="margin-top:16px">Send</button>
+                </form>
+            </div>
         </section>
     </main>
 
-        <footer style="background:#0a0a0a; color:#e0e0e0; text-align:center; padding:25px 0; font-size:0.95rem;">
-        <p>
-            <a href="/privacy.html" style="color:#ff4d4d; text-decoration:none;">Privacy Policy</a> 
-            | © 2026 The Brothers Chips and Fish. All rights reserved.
-        </p>
+    <footer>
+        <div class="wrap">
+            <p class="social">
+                <a href="https://www.facebook.com/share/19FBsP2ERr/?mibextid=wwXIfr">Facebook</a>
+                ·
+                <a href="https://instagram.com/thebrotherschipandfish">Instagram</a>
+                ·
+                <a href="/privacy.html">Privacy</a>
+            </p>
+            <p>© 2026 The Brothers Chips and Fish. All rights reserved. <a href="#secret" id="hidden-link" class="hidden-link" style="color:inherit;text-decoration:none">·</a></p>
+        </div>
     </footer>
+
     <div id="popup-modal" class="modal">
         <div class="modal-content">
-            <span class="close">×</span>
-            <h2>Secret Menu</h2>
-            <p>These items aren’t on the menu, but ask us and we’ll cook them for you!</p>
-            <ul>
-                <li>Chicken Burger - £4.50</li>
-            </ul>
+            <span class="close" aria-label="Close">×</span>
+            <h2 style="color:#2a2218;font-family:Fraunces,serif">Ask us</h2>
+            <p>These items aren’t on the board, but ask and we’ll cook them for you.</p>
+            <p style="margin-top:10px"><strong>Chicken Burger</strong> — £4.50</p>
         </div>
     </div>
-
     <script>
-        // Modal functionality
         var modal = document.getElementById("popup-modal");
         var link = document.getElementById("hidden-link");
         var span = document.getElementsByClassName("close")[0];
-        link.onclick = function(event) {
+        if (link) link.onclick = function(event) {
             event.preventDefault();
             modal.style.display = "block";
         };
-        span.onclick = function() {
-            modal.style.display = "none";
-        };
+        if (span) span.onclick = function() { modal.style.display = "none"; };
         window.onclick = function(event) {
-            if (event.target == modal) {
-                modal.style.display = "none";
-            }
+            if (event.target == modal) modal.style.display = "none";
         };
     </script>
 </body>

@@ -1,0 +1,10 @@
+{
+  "gbp_per_kg": 24.98,
+  "gbp_per_lb": 11.33,
+  "low_kg": 9.97,
+  "high_kg": 45.45,
+  "n": 30,
+  "updated": "2026-09-17",
+  "source": "UK supermarket cod fillets",
+  "source_url": "https://allsupers.co.uk/browse/meat-poultry-and-fish/fresh-fish/cod-fillets"
+}

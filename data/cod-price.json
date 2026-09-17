@@ -1,10 +1,13 @@
 {
-  "gbp_per_kg": 12.5,
-  "gbp_per_lb": 5.67,
+  "gbp_per_kg": 17.15,
+  "gbp_per_lb": 7.78,
+  "landed_gbp_per_kg": 12.5,
+  "landed_gbp_per_lb": 5.67,
+  "uplift_pct": 37,
   "month": "2026-07",
   "tonnes": 3032.0,
   "updated": "2026-09-17",
-  "source": "HMRC UK imports of frozen Atlantic cod fillets",
+  "source": "HMRC UK imports of frozen Atlantic cod fillets + catering on-cost",
   "source_url": "https://www.uktradeinfo.com/",
-  "kind": "frozen_fas"
+  "kind": "van_pay"
 }

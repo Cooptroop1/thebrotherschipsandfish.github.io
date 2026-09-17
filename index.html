@@ -301,10 +301,10 @@
         <div class="wrap">
             <div class="cod-box" id="codPrice">
                 <div>
-                    <p class="kicker">UK shops today</p>
+                    <p class="kicker">Fish market · frozen cod</p>
                     <strong id="codLb">… <small>a lb</small></strong>
                 </div>
-                <p class="cod-copy" id="codNote">Average supermarket price for <b>cod fillets</b> — Tesco, Asda, Sainsbury’s and others. Not our van price. Updates every morning.</p>
+                <p class="cod-copy" id="codNote">UK landed price for <b>frozen Atlantic cod fillets</b> — what the trade pays at the docks (Norway, Iceland and others), not Tesco. Official HMRC figures. Updates when a new month is published.</p>
             </div>
         </div>
     </div>
@@ -578,8 +578,8 @@
             fetch("/data/cod-price.json", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
                 if (!d || !d.gbp_per_lb) return;
                 lb.innerHTML = "£" + Number(d.gbp_per_lb).toFixed(2) + " <small>a lb</small>";
-                var when = d.updated ? (" Updated " + d.updated + ".") : "";
-                note.innerHTML = "Average UK supermarket price for <b>cod fillets</b> (about £" + Number(d.gbp_per_kg).toFixed(2) + " / kg). Tesco, Asda, Sainsbury’s and others. Not our van price." + when;
+                var when = d.month ? (" Latest month: " + d.month + ".") : (d.updated ? (" Updated " + d.updated + ".") : "");
+                note.innerHTML = "UK landed price for <b>frozen Atlantic cod fillets</b> — about £" + Number(d.gbp_per_kg).toFixed(2) + " / kg. What the trade pays at the docks (Norway, Iceland and others), not supermarket packs." + when;
             }).catch(function () {});
         })();
     </script>

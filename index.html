@@ -250,6 +250,16 @@
             .hero { min-height: 72vh; }
             .card img { height: 240px; }
         }
+        .cod-ticker { padding: 28px 0 0; }
+        .cod-box {
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+            gap: 16px; background: var(--card); border: 1px solid var(--line);
+            border-radius: 16px; padding: 18px 22px;
+        }
+        .cod-box strong { font-family: Fraunces, serif; font-size: 2rem; color: var(--gold); line-height: 1; }
+        .cod-box strong small { font-size: 1rem; color: var(--cream); font-weight: 600; }
+        .cod-copy { max-width: 38rem; color: var(--muted); }
+        .cod-copy b { color: var(--cream); }
     </style>
 </head>
 <body>
@@ -285,6 +295,18 @@
         <div><strong>Cooked to order</strong><span>Nothing sitting under a lamp for ages</span></div>
         <div><strong>Hand-cut chips</strong><span>And quality fish, always</span></div>
         <div><strong>Licensed</strong><span>Street food with Breckland</span></div>
+    </div>
+
+    <div class="cod-ticker">
+        <div class="wrap">
+            <div class="cod-box" id="codPrice">
+                <div>
+                    <p class="kicker">UK shops today</p>
+                    <strong id="codLb">… <small>a lb</small></strong>
+                </div>
+                <p class="cod-copy" id="codNote">Average supermarket price for <b>cod fillets</b> — Tesco, Asda, Sainsbury’s and others. Not our van price. Updates every morning.</p>
+            </div>
+        </div>
     </div>
 
     <main>
@@ -549,6 +571,17 @@
         window.onclick = function(event) {
             if (event.target == modal) modal.style.display = "none";
         };
+        (function () {
+            var lb = document.getElementById("codLb");
+            var note = document.getElementById("codNote");
+            if (!lb) return;
+            fetch("/data/cod-price.json", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
+                if (!d || !d.gbp_per_lb) return;
+                lb.innerHTML = "£" + Number(d.gbp_per_lb).toFixed(2) + " <small>a lb</small>";
+                var when = d.updated ? (" Updated " + d.updated + ".") : "";
+                note.innerHTML = "Average UK supermarket price for <b>cod fillets</b> (about £" + Number(d.gbp_per_kg).toFixed(2) + " / kg). Tesco, Asda, Sainsbury’s and others. Not our van price." + when;
+            }).catch(function () {});
+        })();
     </script>
 </body>
 </html>

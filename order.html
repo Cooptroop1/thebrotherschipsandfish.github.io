@@ -26,6 +26,10 @@
         h1 { font-family:Fraunces,Georgia,serif; font-size:clamp(1.8rem, 4vw, 2.6rem); margin:8px 0 4px; }
         .lead { color:var(--muted); max-width:40rem; }
         .layout { display:grid; grid-template-columns:1fr 300px; gap:22px; align-items:start; padding:18px 0 120px; }
+        @media (min-width: 801px) {
+            .wrap { width: min(1240px, calc(100% - 32px)); }
+            #menu { display:grid; grid-template-columns:1fr 1fr; gap:6px 28px; align-items:start; }
+        }
         h2 { font-family:Fraunces,serif; font-size:1.35rem; margin:18px 0 10px; }
         .item { display:grid; grid-template-columns:92px 1fr auto; gap:12px; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden; margin-bottom:10px; padding-right:12px; }
         .item.plain { grid-template-columns: 1fr auto; padding: 12px 12px 12px 14px; }
@@ -256,12 +260,16 @@
             const root = document.getElementById("menu");
             root.innerHTML = "";
             let group = "";
+            let section = null;
             FOOD.forEach((row) => {
                 if (row[1] !== group) {
                     group = row[1];
+                    section = document.createElement("section");
+                    section.className = "group";
                     const h = document.createElement("h2");
                     h.textContent = group;
-                    root.appendChild(h);
+                    section.appendChild(h);
+                    root.appendChild(section);
                 }
                 const n = Object.entries(basket).reduce((sum, [id, qty]) => sum + (id === row[0] || id.startsWith(row[0] + ":") ? qty : 0), 0);
                 const art = document.createElement("article");
@@ -297,15 +305,17 @@
                     side.append(plus);
                 }
                 art.append(side);
-                root.appendChild(art);
+                section.appendChild(art);
             });
+            const drinks = document.createElement("section");
+            drinks.className = "group";
             const h = document.createElement("h2");
             h.textContent = "Drinks";
-            root.appendChild(h);
+            drinks.appendChild(h);
             const note = document.createElement("p");
             note.className = "lead";
             note.textContent = "Coke, Tango, Pepsi Max, Dr Pepper, lemonade or a Fruit Shoot. £1.30. If that one has gone, you get another that is in.";
-            root.appendChild(note);
+            drinks.appendChild(note);
             const grid = document.createElement("div");
             grid.className = "drinks";
             CANS.forEach((can) => {
@@ -334,7 +344,8 @@
                 box.append(controls);
                 grid.appendChild(box);
             });
-            root.appendChild(grid);
+            drinks.appendChild(grid);
+            root.appendChild(drinks);
         }
         function lines() {
             const bits = [];

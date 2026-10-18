@@ -228,8 +228,15 @@
                 button.innerHTML = choice[1] + "<small>" + choice[2] + "</small>";
                 button.onclick = () => {
                     closeChips();
-                    add(row[0], 1);
-                    if (choice[0]) add(choice[0], 1);
+                    if (!choice[0]) {
+                        add(row[0], 1);
+                        return;
+                    }
+                    const chips = FOOD.find((item) => item[0] === choice[0]);
+                    const label = choice[0] === "chipmed" ? "med chips" : choice[1].toLowerCase();
+                    const id = row[0] + ":" + choice[0];
+                    extras[id] = { name: row[2] + " & " + label, pence: row[4] + chips[4] };
+                    add(id, 1);
                 };
                 box.appendChild(button);
             });
@@ -247,9 +254,7 @@
                     h.textContent = group;
                     root.appendChild(h);
                 }
-                const n = row[1] === "Kids"
-                    ? Object.entries(basket).reduce((sum, [id, qty]) => sum + (id.startsWith(row[0] + ":") ? qty : 0), 0)
-                    : (basket[row[0]] || 0);
+                const n = Object.entries(basket).reduce((sum, [id, qty]) => sum + (id === row[0] || id.startsWith(row[0] + ":") ? qty : 0), 0);
                 const art = document.createElement("article");
                 const photo = row[5] ? "<img alt='' src='" + row[5].split("/").map(encodeURIComponent).join("/") + "'>" : "";
                 const blurb = row[3] ? "<p>" + row[3] + "</p>" : "";
@@ -263,10 +268,8 @@
                     minus.type = "button";
                     minus.textContent = "−";
                     minus.onclick = () => {
-                        if (row[1] === "Kids") {
-                            const id = Object.keys(basket).filter((key) => key.startsWith(row[0] + ":")).pop();
-                            if (id) add(id, -1);
-                        } else add(row[0], -1);
+                        const id = Object.keys(basket).filter((key) => key === row[0] || key.startsWith(row[0] + ":")).pop();
+                        if (id) add(id, -1);
                     };
                     const num = document.createElement("span");
                     num.textContent = String(n);

@@ -211,8 +211,29 @@
         }
         function plusItem(row) {
             if (row[1] === "Kids") askDrink(row);
+            else if (row[0] === "taster") askSide(row);
             else if (needsChips(row)) askChips(row);
             else add(row[0], 1);
+        }
+        function askSide(row) {
+            document.getElementById("chipTitle").textContent = "Which side with the taster box?";
+            const box = document.getElementById("chipChoices");
+            box.innerHTML = "";
+            [["gravy", "Gravy"], ["curry", "Curry sauce"], ["peas", "Mushy peas"]].forEach((choice) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "slot";
+                button.innerHTML = choice[1] + "<small>Included</small>";
+                button.onclick = () => {
+                    const id = row[0] + ":" + choice[0];
+                    extras[id] = { name: "Taster box & " + choice[1].toLowerCase(), pence: row[4] };
+                    closeChips();
+                    add(id, 1);
+                };
+                box.appendChild(button);
+            });
+            document.getElementById("chipBg").classList.add("open");
+            document.getElementById("chipAsk").classList.add("open");
         }
         function askDrink(row) {
             document.getElementById("chipTitle").textContent = "Drink with " + row[2].replace(", chips & a drink", "") + "?";
@@ -364,7 +385,8 @@
                 grid.appendChild(box);
             });
             drinks.appendChild(grid);
-            place(drinks);
+            drinks.style.setProperty("--n", String(placed));
+            right.appendChild(drinks);
         }
         function lines() {
             const bits = [];

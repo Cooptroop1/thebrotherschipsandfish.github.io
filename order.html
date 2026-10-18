@@ -28,7 +28,15 @@
         .layout { display:grid; grid-template-columns:1fr 300px; gap:22px; align-items:start; padding:18px 0 120px; }
         @media (min-width: 801px) {
             .wrap { width: min(1240px, calc(100% - 32px)); }
-            #menu { display:grid; grid-template-columns:1fr 1fr; gap:6px 28px; align-items:start; }
+            #menu { display:grid; grid-template-columns:1fr 1fr; column-gap:28px; align-items:start; }
+            .col { display:flex; flex-direction:column; gap:18px; }
+            .col h2 { margin-top:0; }
+            .col .item:last-child { margin-bottom:0; }
+        }
+        @media (max-width: 800px) {
+            #menu { display:flex; flex-direction:column; }
+            .col { display:contents; }
+            .group { order:var(--n); }
         }
         h2 { font-family:Fraunces,serif; font-size:1.35rem; margin:18px 0 10px; }
         .item { display:grid; grid-template-columns:92px 1fr auto; gap:12px; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden; margin-bottom:10px; padding-right:12px; }
@@ -259,8 +267,19 @@
         function drawMenu() {
             const root = document.getElementById("menu");
             root.innerHTML = "";
+            const left = document.createElement("div");
+            const right = document.createElement("div");
+            left.className = "col";
+            right.className = "col";
+            root.append(left, right);
             let group = "";
             let section = null;
+            let placed = 0;
+            function place(block) {
+                block.style.setProperty("--n", String(placed));
+                (placed % 2 === 0 ? left : right).appendChild(block);
+                placed += 1;
+            }
             FOOD.forEach((row) => {
                 if (row[1] !== group) {
                     group = row[1];
@@ -269,7 +288,7 @@
                     const h = document.createElement("h2");
                     h.textContent = group;
                     section.appendChild(h);
-                    root.appendChild(section);
+                    place(section);
                 }
                 const n = Object.entries(basket).reduce((sum, [id, qty]) => sum + (id === row[0] || id.startsWith(row[0] + ":") ? qty : 0), 0);
                 const art = document.createElement("article");
@@ -345,7 +364,7 @@
                 grid.appendChild(box);
             });
             drinks.appendChild(grid);
-            root.appendChild(drinks);
+            place(drinks);
         }
         function lines() {
             const bits = [];

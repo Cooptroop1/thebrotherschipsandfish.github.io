@@ -196,14 +196,14 @@
             document.getElementById("chipTitle").textContent = "Drink with " + row[2].replace(", chips & a drink", "") + "?";
             const box = document.getElementById("chipChoices");
             box.innerHTML = "";
-            [["can", "Can", "Included"], ["shoot", "Fruit Shoot", "Included"]].forEach((choice) => {
+            [["coke", "Coke"], ["diet", "Diet Coke"], ["fanta", "Fanta"], ["sprite", "Sprite"], ["shoot", "Fruit Shoot"]].forEach((choice) => {
                 const button = document.createElement("button");
                 button.type = "button";
                 button.className = "slot";
-                button.innerHTML = choice[1] + "<small>" + choice[2] + "</small>";
+                button.innerHTML = choice[1] + "<small>Included</small>";
                 button.onclick = () => {
                     const id = row[0] + ":" + choice[0];
-                    const drink = choice[0] === "can" ? "a can" : "a Fruit Shoot";
+                    const drink = choice[0] === "shoot" ? "a Fruit Shoot" : choice[1];
                     extras[id] = { name: row[2].replace("a drink", drink), pence: row[4] };
                     closeChips();
                     add(id, 1);
@@ -247,7 +247,9 @@
                     h.textContent = group;
                     root.appendChild(h);
                 }
-                const n = basket[row[0]] || 0;
+                const n = row[1] === "Kids"
+                    ? Object.entries(basket).reduce((sum, [id, qty]) => sum + (id.startsWith(row[0] + ":") ? qty : 0), 0)
+                    : (basket[row[0]] || 0);
                 const art = document.createElement("article");
                 const photo = row[5] ? "<img alt='' src='" + row[5].split("/").map(encodeURIComponent).join("/") + "'>" : "";
                 const blurb = row[3] ? "<p>" + row[3] + "</p>" : "";
@@ -260,7 +262,12 @@
                     minus.className = "minus";
                     minus.type = "button";
                     minus.textContent = "−";
-                    minus.onclick = () => add(row[0], -1);
+                    minus.onclick = () => {
+                        if (row[1] === "Kids") {
+                            const id = Object.keys(basket).filter((key) => key.startsWith(row[0] + ":")).pop();
+                            if (id) add(id, -1);
+                        } else add(row[0], -1);
+                    };
                     const num = document.createElement("span");
                     num.textContent = String(n);
                     const plus = document.createElement("button");
@@ -293,13 +300,26 @@
                 const n = basket[can[0]] || 0;
                 const box = document.createElement("div");
                 box.className = "can";
-                box.innerHTML = "<div><b>" + can[1] + "</b><div class='price'>" + (n ? n + " in basket" : money(can[2])) + "</div></div>";
+                box.innerHTML = "<div><b>" + can[1] + "</b><div class='price'>" + money(can[2]) + "</div></div>";
+                const controls = document.createElement("div");
+                controls.className = "qty";
+                if (n) {
+                    const minus = document.createElement("button");
+                    minus.className = "minus";
+                    minus.type = "button";
+                    minus.textContent = "−";
+                    minus.onclick = () => add(can[0], -1);
+                    const num = document.createElement("span");
+                    num.textContent = String(n);
+                    controls.append(minus, num);
+                }
                 const plus = document.createElement("button");
                 plus.className = "add";
                 plus.type = "button";
                 plus.textContent = "+";
                 plus.onclick = () => add(can[0], 1);
-                box.append(plus);
+                controls.append(plus);
+                box.append(controls);
                 grid.appendChild(box);
             });
             root.appendChild(grid);

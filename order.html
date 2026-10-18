@@ -28,6 +28,7 @@
         .layout { display:grid; grid-template-columns:1fr 300px; gap:22px; align-items:start; padding:18px 0 120px; }
         h2 { font-family:Fraunces,serif; font-size:1.35rem; margin:18px 0 10px; }
         .item { display:grid; grid-template-columns:92px 1fr auto; gap:12px; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden; margin-bottom:10px; padding-right:12px; }
+        .item.plain { grid-template-columns: 1fr auto; padding: 12px 12px 12px 14px; }
         .item img { width:92px; height:92px; object-fit:cover; }
         .item strong { display:block; }
         .item p { color:var(--muted); font-size:.88rem; }
@@ -100,20 +101,50 @@
     </div>
     <script>
         const FOOD = [
-            ["cod","Fish","Large cod, chips & mushy peas","Filleted on the van",1140,"images/Large Cod & Chips & Mushy Peas.jpg"],
-            ["haddock","Fish","Medium haddock & chips","Hand-cut chips",940,"images/Medium Haddock & Chips.jpg"],
-            ["plaice","Fish","Plaice & chips","Cooked to order",950,"images/Plaice & Chips.jpg"],
-            ["goujons","Fish","Cod goujons & chips","Battered fillet",920,"images/Cod Goujons & Chips.jpg"],
-            ["bites","Fish","Cod bites & chips","Chunks of fillet",920,"images/Cod Bites & Chips.jpg"],
+            ["codmeal","Fish","Large cod, chips & mushy peas","",1140,"images/Large Cod & Chips & Mushy Peas.jpg"],
+            ["haddockmeal","Fish","Medium haddock & chips","",940,"images/Medium Haddock & Chips.jpg"],
+            ["plaicemeal","Fish","Plaice & chips","",950,"images/Plaice & Chips.jpg"],
+            ["goujonmeal","Fish","Cod goujons & chips","",920,"images/Cod Goujons & Chips.jpg"],
+            ["bitesmeal","Fish","Cod bites & chips","",920,"images/Cod Bites & Chips.jpg"],
             ["kids","Fish","Kids cod bites & chips","Three bites, chips and a drink",400,"images/Kids Cod bites & Chips.jpg"],
-            ["sausage","Sausages","Sausage & chips","Battered sausage",410,"images/Sausage & Chips.jpg"],
-            ["jumbo","Sausages","Jumbo sausage & chips","Battered jumbo",475,"images/Jumbo Sausage & Chips.jpg"],
-            ["bigfoot","Sausages","Bigfoot sausage & chips","The long one",580,"images/Bigfoot Sausage & Chips.jpg"],
-            ["cake","Sides","Jumbo fish cake & chips","With chips",420,"images/Jumbo Fish Cake & Chips.jpg"],
-            ["scampi","Sides","9 scampi & chips","Colman's tartare",850,"images/9 Scampi & Chips.jpg"],
-            ["nuggets","Sides","Chicken nuggets & chips","From the freezer",740,"images/Chicken Nuggets & Chips.jpg"],
-            ["spicy","Sides","Spicy chicken strips & chips","From the freezer",625,"images/Spicy Chicken Strips & Chips.jpg"],
-            ["mozz","Sides","Mozzarella sticks","From the freezer",220,"images/Mozzarella Sticks.jpg"]
+            ["medcod","Fish","Medium cod","",690,""],
+            ["largecod","Fish","Large cod","",790,""],
+            ["medhaddock","Fish","Medium haddock","",690,""],
+            ["largehaddock","Fish","Large haddock","",790,""],
+            ["plaice","Fish","Plaice","",700,""],
+            ["goujons","Fish","Cod goujons","",670,""],
+            ["bites","Fish","Cod bites","",670,""],
+            ["taster","Fish","Taster box","",720,""],
+            ["sausagemeal","Sausages","Sausage & chips","",410,"images/Sausage & Chips.jpg"],
+            ["jumbomeal","Sausages","Jumbo sausage & chips","",475,"images/Jumbo Sausage & Chips.jpg"],
+            ["bigfootmeal","Sausages","Bigfoot sausage & chips","",580,"images/Bigfoot Sausage & Chips.jpg"],
+            ["sausage","Sausages","Battered sausage","",160,""],
+            ["jumbo","Sausages","Battered jumbo sausage","",225,""],
+            ["bigfoot","Sausages","Battered Bigfoot sausage","",330,""],
+            ["chipsmall","Chips","Small chips","",200,""],
+            ["chipmed","Chips","Medium chips","",250,""],
+            ["chiplarge","Chips","Large chips","",350,""],
+            ["nuggetmeal","Chicken","Chicken nuggets & chips","",740,"images/Chicken Nuggets & Chips.jpg"],
+            ["spicymeal","Chicken","Spicy chicken strips & chips","",625,"images/Spicy Chicken Strips & Chips.jpg"],
+            ["nug6","Chicken","Chicken nuggets (6)","",280,""],
+            ["nug9","Chicken","Chicken nuggets (9)","",390,""],
+            ["spicy","Chicken","Spicy chicken strips (4)","",375,""],
+            ["scampimeal","Scampi","9 scampi & chips","With Colman's tartare",850,"images/9 Scampi & Chips.jpg"],
+            ["scampi6","Scampi","Medium scampi (6)","With Colman's tartare",395,""],
+            ["scampi9","Scampi","Large scampi (9)","With Colman's tartare",560,""],
+            ["peas","Sauces","Mushy peas","",100,""],
+            ["curry","Sauces","Curry sauce","",100,""],
+            ["gravy","Sauces","Gravy","",100,""],
+            ["ketchup","Sauces","Tomato ketchup pot","",25,""],
+            ["tartare","Sauces","Colman's Norfolk tartare","",40,""],
+            ["cakemeal","Other meals","Jumbo fish cake & chips","",420,"images/Jumbo Fish Cake & Chips.jpg"],
+            ["cake","Other meals","Jumbo fish cake","",170,""],
+            ["mozz","Other meals","Mozzarella sticks","",220,"images/Mozzarella Sticks.jpg"],
+            ["spring","Other meals","Spring roll","",200,""],
+            ["veg","Other meals","Veg roll","",200,""],
+            ["roll","Other meals","Buttered roll","",85,""],
+            ["pineapple","Other meals","Pineapple fritter","",135,""],
+            ["mars","Other meals","Battered Mars bar","",150,""]
         ];
         const CANS = [["coke","Coke",130],["diet","Diet Coke",130],["fanta","Fanta",130],["sprite","Sprite",130]];
         const SLOTS = ["4:30","4:45","5:00","5:15","5:30","5:45","6:00","6:15","6:30","6:45"];
@@ -149,8 +180,10 @@
                 }
                 const n = basket[row[0]] || 0;
                 const art = document.createElement("article");
-                art.className = "item";
-                art.innerHTML = "<img alt='' src='" + row[5].split("/").map(encodeURIComponent).join("/") + "'><div><strong>" + row[2] + "</strong><p>" + row[3] + "</p><div class='price'>" + money(row[4]) + "</div></div>";
+                const photo = row[5] ? "<img alt='' src='" + row[5].split("/").map(encodeURIComponent).join("/") + "'>" : "";
+                const blurb = row[3] ? "<p>" + row[3] + "</p>" : "";
+                art.className = row[5] ? "item" : "item plain";
+                art.innerHTML = photo + "<div><strong>" + row[2] + "</strong>" + blurb + "<div class='price'>" + money(row[4]) + "</div></div>";
                 const side = document.createElement("div");
                 if (n) {
                     side.className = "qty";

@@ -116,7 +116,6 @@
             ["plaicemeal","Fish","Plaice & med chips","",950,"images/Plaice & Chips.jpg"],
             ["goujonmeal","Fish","Cod goujons & med chips","",920,"images/Cod Goujons & Chips.jpg"],
             ["bitesmeal","Fish","Cod bites & med chips","",920,"images/Cod Bites & Chips.jpg"],
-            ["kids","Fish","Kids cod bites & med chips","Three bites, med chips and a drink",400,"images/Kids Cod bites & Chips.jpg"],
             ["medcod","Fish","Medium cod","",690,""],
             ["largecod","Fish","Large cod","",790,""],
             ["medhaddock","Fish","Medium haddock","",690,""],
@@ -154,21 +153,29 @@
             ["veg","Other meals","Veg roll","",200,""],
             ["roll","Other meals","Buttered roll","",85,""],
             ["pineapple","Other meals","Pineapple fritter","",135,""],
-            ["mars","Other meals","Battered Mars bar","",150,""]
+            ["mars","Other meals","Battered Mars bar","",150,""],
+            ["kidssausage","Kids","Sausage, chips & a drink","",400,"images/Sausage & Chips.jpg"],
+            ["kidsfishcake","Kids","Fishcake, chips & a drink","",400,"images/Jumbo Fish Cake & Chips.jpg"],
+            ["kidsnug","Kids","4 chicken nuggets, chips & a drink","",400,"images/Chicken Nuggets & Chips.jpg"],
+            ["kidscod","Kids","4 cod bits, chips & a drink","",400,"images/Kids Cod bites & Chips.jpg"]
         ];
         const CANS = [["coke","Coke",130],["diet","Diet Coke",130],["fanta","Fanta",130],["sprite","Sprite",130]];
         const SLOTS = ["4:30","4:45","5:00","5:15","5:30","5:45","6:00","6:15","6:30","6:45"];
         const basket = {};
+        const extras = {};
         let held = "";
         let left = 0;
         let timer = 0;
         const money = (p) => "£" + (p / 100).toFixed(2);
+        function lookup(id) {
+            const food = FOOD.find((row) => row[0] === id);
+            if (food) return { name: food[2], pence: food[4] };
+            const can = CANS.find((row) => row[0] === id);
+            if (can) return { name: can[1], pence: can[2] };
+            return extras[id] || null;
+        }
         function foodPence() {
-            return Object.entries(basket).reduce((sum, [id, n]) => {
-                const food = FOOD.find((row) => row[0] === id);
-                const can = CANS.find((row) => row[0] === id);
-                return sum + n * (food ? food[4] : can[2]);
-            }, 0);
+            return Object.entries(basket).reduce((sum, [id, n]) => sum + n * lookup(id).pence, 0);
         }
         function count() { return Object.values(basket).reduce((a, b) => a + b, 0); }
         function add(id, by) {
@@ -181,8 +188,30 @@
             return row[1] !== "Chips" && row[1] !== "Sauces" && !/chips/i.test(row[2]);
         }
         function plusItem(row) {
-            if (needsChips(row)) askChips(row);
+            if (row[1] === "Kids") askDrink(row);
+            else if (needsChips(row)) askChips(row);
             else add(row[0], 1);
+        }
+        function askDrink(row) {
+            document.getElementById("chipTitle").textContent = "Drink with " + row[2].replace(", chips & a drink", "") + "?";
+            const box = document.getElementById("chipChoices");
+            box.innerHTML = "";
+            [["can", "Can", "Included"], ["shoot", "Fruit Shoot", "Included"]].forEach((choice) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "slot";
+                button.innerHTML = choice[1] + "<small>" + choice[2] + "</small>";
+                button.onclick = () => {
+                    const id = row[0] + ":" + choice[0];
+                    const drink = choice[0] === "can" ? "a can" : "a Fruit Shoot";
+                    extras[id] = { name: row[2].replace("a drink", drink), pence: row[4] };
+                    closeChips();
+                    add(id, 1);
+                };
+                box.appendChild(button);
+            });
+            document.getElementById("chipBg").classList.add("open");
+            document.getElementById("chipAsk").classList.add("open");
         }
         function closeChips() {
             document.getElementById("chipBg").classList.remove("open");
@@ -278,11 +307,8 @@
         function lines() {
             const bits = [];
             Object.entries(basket).forEach(([id, n]) => {
-                const food = FOOD.find((row) => row[0] === id);
-                const can = CANS.find((row) => row[0] === id);
-                const name = food ? food[2] : can[1];
-                const pence = food ? food[4] : can[2];
-                bits.push("<div class='line'><span>" + n + " × " + name + "</span><span>" + money(n * pence) + "</span></div>");
+                const item = lookup(id);
+                bits.push("<div class='line'><span>" + n + " × " + item.name + "</span><span>" + money(n * item.pence) + "</span></div>");
             });
             if (!bits.length) return "<p class='empty'>Nothing in the basket yet.</p>";
             const food = foodPence();

@@ -157,9 +157,19 @@
             ["kidssausage","Kids","Sausage, chips & a drink","",400,"images/Sausage & Chips.jpg"],
             ["kidsfishcake","Kids","Fishcake, chips & a drink","",400,"images/Jumbo Fish Cake & Chips.jpg"],
             ["kidsnug","Kids","4 chicken nuggets, chips & a drink","",400,"images/Chicken Nuggets & Chips.jpg"],
-            ["kidscod","Kids","4 cod bits, chips & a drink","",400,"images/Kids Cod bites & Chips.jpg"]
+            ["kidscod","Kids","4 cod bits, chips & a drink","",500,"images/Kids Cod bites & Chips.jpg"],
+            ["kidscodfish","Kids","Kids cod, chips & a drink","",500,"images/Large Cod & Chips & Mushy Peas.jpg"]
         ];
-        const CANS = [["coke","Coke",130],["diet","Diet Coke",130],["fanta","Fanta",130],["sprite","Sprite",130]];
+        const CANS = [
+            ["coke","Coke",130],
+            ["orangetango","Orange Tango",130],
+            ["appletango","Apple Tango",130],
+            ["pepsimax","Pepsi Max",130],
+            ["drpepper","Dr Pepper",130],
+            ["lemonade","Lemonade",130],
+            ["shootapple","Fruit Shoot apple",130],
+            ["shootblack","Fruit Shoot blackcurrant",130]
+        ];
         const SLOTS = ["4:30","4:45","5:00","5:15","5:30","5:45","6:00","6:15","6:30","6:45"];
         const basket = {};
         const extras = {};
@@ -196,15 +206,14 @@
             document.getElementById("chipTitle").textContent = "Drink with " + row[2].replace(", chips & a drink", "") + "?";
             const box = document.getElementById("chipChoices");
             box.innerHTML = "";
-            [["coke", "Coke"], ["diet", "Diet Coke"], ["fanta", "Fanta"], ["sprite", "Sprite"], ["shoot", "Fruit Shoot"]].forEach((choice) => {
+            CANS.forEach((choice) => {
                 const button = document.createElement("button");
                 button.type = "button";
                 button.className = "slot";
                 button.innerHTML = choice[1] + "<small>Included</small>";
                 button.onclick = () => {
                     const id = row[0] + ":" + choice[0];
-                    const drink = choice[0] === "shoot" ? "a Fruit Shoot" : choice[1];
-                    extras[id] = { name: row[2].replace("a drink", drink), pence: row[4] };
+                    extras[id] = { name: row[2].replace("a drink", choice[1]), pence: row[4] };
                     closeChips();
                     add(id, 1);
                 };
@@ -295,7 +304,7 @@
             root.appendChild(h);
             const note = document.createElement("p");
             note.className = "lead";
-            note.textContent = "A can of your choice, £1.30. If that one has gone on the night, you get a random can that is in.";
+            note.textContent = "Coke, Tango, Pepsi Max, Dr Pepper, lemonade or a Fruit Shoot. £1.30. If that one has gone, you get another that is in.";
             root.appendChild(note);
             const grid = document.createElement("div");
             grid.className = "drinks";

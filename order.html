@@ -92,12 +92,12 @@
     <div class="banner"><div class="wrap">Preview. You can click around. We are not taking orders or payment yet.</div></div>
     <main class="wrap">
         <div class="chips">
-            <span class="chip">£5 delivery</span>
+            <span class="chip">Pickup</span>
             <span class="chip">4:30–7:00</span>
             <span class="chip">15 min slots</span>
         </div>
-        <h1>Order for delivery</h1>
-        <p class="lead">Tap + to add. Then pick a 15-minute drop. The slot stays yours for 5 minutes on this screen.</p>
+        <h1>Order for pickup</h1>
+        <p class="lead">Tap + to add. Then pick a 15-minute pickup. The slot stays yours for 5 minutes on this screen.</p>
         <div class="layout">
             <div id="menu"></div>
             <aside class="basket" id="desk"></aside>
@@ -105,11 +105,11 @@
     </main>
     <button class="bar" id="bar" type="button">Basket</button>
     <div class="sheet-bg" id="bg"></div>
-    <div class="sheet" id="sheet" role="dialog" aria-label="Pick a drop-off">
+    <div class="sheet" id="sheet" role="dialog" aria-label="Pick a pickup">
         <div class="grab"></div>
         <p class="day">This evening</p>
-        <h2>Pick a drop-off</h2>
-        <p class="lead">15 minutes. One drop in each slot. Yours is held while you finish.</p>
+        <h2>Pick a pickup</h2>
+        <p class="lead">15 minutes. Last order is 7:00. Yours is held while you finish.</p>
         <div class="grid" id="slots"></div>
         <p class="hold" id="hold">Pick a time. It is held for 5 minutes, then it frees if you do not finish.</p>
         <div id="totals"></div>
@@ -182,7 +182,7 @@
             ["shootapple","Fruit Shoot apple",130],
             ["shootblack","Fruit Shoot blackcurrant",130]
         ];
-        const SLOTS = ["4:30","4:45","5:00","5:15","5:30","5:45","6:00","6:15","6:30","6:45"];
+        const SLOTS = ["4:30","4:45","5:00","5:15","5:30","5:45","6:00","6:15","6:30","6:45","7:00"];
         const basket = {};
         const extras = {};
         let held = "";
@@ -396,7 +396,7 @@
             });
             if (!bits.length) return "<p class='empty'>Nothing in the basket yet.</p>";
             const food = foodPence();
-            return bits.join("") + "<div class='line'><span>Delivery</span><span>£5.00</span></div><div class='line'><strong>To pay</strong><strong>" + money(food + 500) + "</strong></div>";
+            return bits.join("") + "<div class='line'><strong>To pay</strong><strong>" + money(food) + "</strong></div>";
         }
         function draw() {
             drawMenu();
@@ -405,9 +405,9 @@
             if (deskGo) deskGo.onclick = openSheet;
             const bar = document.getElementById("bar");
             const food = foodPence();
-            bar.textContent = count() ? ("Basket · " + count() + " · " + money(food + 500)) : "Basket is empty";
+            bar.textContent = count() ? ("Basket · " + count() + " · " + money(food)) : "Basket is empty";
             document.getElementById("totals").innerHTML = count() ? lines() : "";
-            document.getElementById("pay").textContent = count() ? ("Preview · " + money(food + 500)) : "Add food first";
+            document.getElementById("pay").textContent = count() ? ("Preview · " + money(food)) : "Add food first";
             document.getElementById("pay").disabled = !count() || !held;
             drawSlots();
         }

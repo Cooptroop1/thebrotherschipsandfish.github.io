@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
-    <title>Order preview | The Brothers Chips and Fish</title>
+    <title>Order | The Brothers Chips and Fish</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
@@ -21,6 +21,9 @@
         .brand span { color:var(--gold); }
         .back { color:var(--cream); text-decoration:none; font-weight:700; font-size:.9rem; }
         .banner { background:#241c12; border-bottom:1px solid var(--line); color:var(--cream); padding:10px 0; font-size:.95rem; }
+        .banner[hidden], #openShop[hidden], #closedBox[hidden] { display:none; }
+        .bar[hidden] { display:none !important; }
+        #closedBox { padding:28px 0 80px; }
         .chips { display:flex; flex-wrap:wrap; gap:8px; padding:14px 0 0; }
         .chip { border:1px solid var(--line); color:var(--gold2); border-radius:999px; padding:6px 12px; font-size:.82rem; font-weight:700; }
         h1 { font-family:Fraunces,Georgia,serif; font-size:clamp(1.8rem, 4vw, 2.6rem); margin:8px 0 4px; }
@@ -106,8 +109,13 @@
             </span>
         </div>
     </header>
-    <div class="banner"><div class="wrap">Preview. You can click around. We are not taking orders or payment yet.</div></div>
+    <div class="banner" id="banner"><div class="wrap">Orders are closed.</div></div>
     <main class="wrap">
+        <div id="closedBox">
+            <h1>Orders are closed</h1>
+            <p class="lead">Pickup orders are switched off. We will open this when we are taking orders.</p>
+        </div>
+        <div id="openShop" hidden>
         <div class="chips">
             <span class="chip">Pickup</span>
             <span class="chip">4:30–7:00</span>
@@ -142,8 +150,9 @@
             <aside class="basket" id="desk"></aside>
         </div>
         </div>
+        </div>
     </main>
-    <button class="bar" id="bar" type="button">Basket</button>
+    <button class="bar" id="bar" type="button" hidden>Basket</button>
     <div class="sheet-bg" id="bg"></div>
     <div class="sheet" id="sheet" role="dialog" aria-label="Pick a pickup">
         <div class="grab"></div>
@@ -493,7 +502,7 @@
             return res.json();
         }
         async function takeSlot(slot) {
-            if (taken.has(slot) || booking || !sessionUser) return;
+            if (!ordersOpen || taken.has(slot) || booking || !sessionUser) return;
             const db = sb();
             if (!db) return;
             booking = true;
@@ -510,6 +519,7 @@
             window.location.href = data.url;
         }
         function openSheet() {
+            if (!ordersOpen) return;
             if (!sessionUser) {
                 askAuth("Log in or sign up to book a time.");
                 return;
@@ -558,6 +568,7 @@
             document.getElementById("logout").hidden = !on;
             document.getElementById("staffLink").hidden = !on || String(sessionUser.email || "").toLowerCase() !== "jcooper4888@aol.co.uk";
             const bar = document.getElementById("bar");
+            bar.hidden = !ordersOpen;
             bar.style.removeProperty("display");
             if (el) el.textContent = on ? ((profile && profile.name) || sessionUser.email) : "";
         }
@@ -636,7 +647,7 @@
                     password,
                     options: {
                         data: { name, address: full, postcode },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=13"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=14"
                     }
                 });
                 if (error) {
@@ -682,10 +693,31 @@
                 }
             });
         }
+        let ordersOpen = false;
+        function paintShop() {
+            document.getElementById("closedBox").hidden = ordersOpen;
+            document.getElementById("openShop").hidden = !ordersOpen;
+            document.getElementById("banner").hidden = ordersOpen;
+            const bar = document.getElementById("bar");
+            bar.hidden = !ordersOpen;
+            if (!ordersOpen) closeSheet();
+        }
+        async function loadShopFlag() {
+            try {
+                const data = await payCall({ action: "shop" });
+                ordersOpen = !!(data && data.open === true);
+            } catch (err) {
+                ordersOpen = false;
+            }
+            paintShop();
+        }
         document.getElementById("pay").hidden = true;
         draw();
+        paintShop();
         paintWho();
         bootAuth();
+        loadShopFlag();
+        setInterval(loadShopFlag, 20000);
     </script>
 </body>
 </html>

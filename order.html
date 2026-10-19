@@ -115,7 +115,7 @@
             <span style="display:flex;gap:14px;align-items:center">
                 <span id="who"></span>
                 <button id="logout" type="button" hidden style="background:transparent;color:#e8c96a;border:0;font:inherit;font-weight:700;cursor:pointer">Log out</button>
-                <a class="back" id="staffLink" href="/admin.html?v=26" hidden>Staff</a>
+                <a class="back" id="staffLink" href="/admin.html?v=27" hidden>Staff</a>
                 <a class="back" href="/">Back to the van</a>
             </span>
         </div>
@@ -647,7 +647,6 @@
             held = data.slot;
             tickHold();
             drawSlots();
-            if (forceSheet && ordersOpen) openSheet();
         }
         function unmountCard() {
             if (checkout) {
@@ -959,7 +958,7 @@
                     email: email,
                     options: {
                         shouldCreateUser: false,
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=26"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=27"
                     }
                 });
                 if (error) {
@@ -1009,7 +1008,7 @@
                     password,
                     options: {
                         data: { name, address: full, postcode },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=26"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=27"
                     }
                 });
                 if (error) {
@@ -1063,15 +1062,14 @@
                     } else {
                         showOrder(paid, "failed", false);
                     }
-                    history.replaceState({}, "", "/order.html?v=26");
+                    history.replaceState({}, "", "/order.html?v=27");
                     return;
                 }
                 if (sessionUser) {
                     if (cameBack) {
-                        document.getElementById("bookedNote").textContent = "No payment was taken. The time stays held until the 5 minute timer ends.";
-                        showOrder(null, "back", false);
-                        resumeHold(true);
-                        history.replaceState({}, "", "/order.html?v=26");
+                        document.getElementById("bookedNote").textContent = "No payment was taken. The time stays held. Add what you want, then press the button when you are ready.";
+                        resumeHold(false);
+                        history.replaceState({}, "", "/order.html?v=27");
                         return;
                     }
                     resumeHold(false);
@@ -1113,7 +1111,6 @@
                 ordersOpen = false;
             }
             paintShop();
-            if (cameBack && ordersOpen) openSheet();
         }
         document.getElementById("pay").hidden = true;
         loadBasket();

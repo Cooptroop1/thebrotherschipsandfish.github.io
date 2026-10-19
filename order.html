@@ -255,8 +255,8 @@
             ["kidssausage","Kids","Kids sausage, chips & a drink","",400,"images/Sausage & Chips.jpg"],
             ["kidsfishcake","Kids","Kids fishcake, chips & a drink","",400,"images/Jumbo Fish Cake & Chips.jpg"],
             ["kidsnug","Kids","Kids 4 chicken nuggets, chips & a drink","",400,"images/Chicken Nuggets & Chips.jpg"],
-            ["kidscod","Kids","Kids 4 cod bits, chips & a drink","",400,"images/Kids Cod bites & Chips.jpg"],
-            ["kidscodfish","Kids","Kids cod, chips & a drink","",400,"images/Large Cod & Chips & Mushy Peas.jpg"]
+            ["kidscod","Kids","Kids 4 cod bits, chips & a drink","",500,"images/Kids Cod bites & Chips.jpg"],
+            ["kidscodfish","Kids","Kids cod, chips & a drink","",500,"images/Large Cod & Chips & Mushy Peas.jpg"]
         ];
         const CANS = [
             ["coke","Coke",100],
@@ -294,7 +294,14 @@
             if (food) return { name: food[2], pence: food[4] };
             const can = CANS.find((row) => row[0] === id);
             if (can) return { name: can[1], pence: can[2] };
-            return extras[id] || null;
+            const extra = extras[id];
+            if (!extra) return null;
+            const parts = String(id).split(":");
+            const base = parts.length === 2 ? FOOD.find((row) => row[0] === parts[0]) : null;
+            const addOn = parts.length === 2 ? FOOD.find((row) => row[0] === parts[1]) : null;
+            if (base && (String(parts[0]).indexOf("kids") === 0 || parts[0] === "taster")) return { name: extra.name, pence: base[4] };
+            if (base && addOn) return { name: extra.name, pence: base[4] + addOn[4] };
+            return extra;
         }
         function foodPence() {
             return Object.entries(basket).reduce((sum, [id, n]) => sum + n * lookup(id).pence, 0);

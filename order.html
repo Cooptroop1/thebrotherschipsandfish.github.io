@@ -21,7 +21,9 @@
         .brand span { color:var(--gold); }
         .back { color:var(--cream); text-decoration:none; font-weight:700; font-size:.9rem; }
         .banner { background:#241c12; border-bottom:1px solid var(--line); color:var(--cream); padding:10px 0; font-size:.95rem; }
-        .banner[hidden], #openShop[hidden], #closedBox[hidden] { display:none; }
+        .banner[hidden], #openShop[hidden], #closedBox[hidden], #staffSwitch[hidden] { display:none; }
+        #staffSwitch { display:flex; justify-content:space-between; align-items:center; gap:12px; max-width:520px; margin:14px 0 0 auto; }
+        #staffSwitch .lead { margin:0; }
         .bar[hidden] { display:none !important; }
         #closedBox { padding:28px 0 80px; }
         .chips { display:flex; flex-wrap:wrap; gap:8px; padding:14px 0 0; }
@@ -104,25 +106,13 @@
             <span style="display:flex;gap:14px;align-items:center">
                 <span id="who"></span>
                 <button id="logout" type="button" hidden style="background:transparent;color:#e8c96a;border:0;font:inherit;font-weight:700;cursor:pointer">Log out</button>
-                <a class="back" id="staffLink" href="/admin.html?v=15" hidden>Staff</a>
+                <a class="back" id="staffLink" href="/admin.html?v=16" hidden>Staff</a>
                 <a class="back" href="/">Back to the van</a>
             </span>
         </div>
     </header>
     <div class="banner" id="banner"><div class="wrap">Orders are closed.</div></div>
     <main class="wrap">
-        <div id="closedBox">
-            <h1>Orders are closed</h1>
-            <p class="lead">Pickup orders are switched off. We will open this when we are taking orders.</p>
-        </div>
-        <div id="openShop" hidden>
-        <div class="chips">
-            <span class="chip">Pickup</span>
-            <span class="chip">4:30–7:00</span>
-            <span class="chip">15 min slots</span>
-        </div>
-        <h1>Order for pickup</h1>
-        <p class="lead">Tap + to add. Then pick a pickup time. That time is taken straight away.</p>
         <div id="account" class="account">
             <p id="loginNote" class="login-note"></p>
             <button class="mini" id="showLogin" type="button">Log in</button>
@@ -143,6 +133,22 @@
             <input id="loginPass" type="password" autocomplete="current-password">
             <button class="go" id="doGo" type="button" style="margin-top:10px">Log in</button>
         </div>
+        <div id="staffSwitch" hidden>
+            <p class="lead" id="switchNote">Orders are closed.</p>
+            <button class="mini" id="switchBtn" type="button">Turn orders on</button>
+        </div>
+        <div id="closedBox">
+            <h1>Orders are closed</h1>
+            <p class="lead">Pickup orders are switched off for now. You can still log in or sign up so you are ready.</p>
+        </div>
+        <div id="openShop" hidden>
+        <div class="chips">
+            <span class="chip">Pickup</span>
+            <span class="chip">4:30–7:00</span>
+            <span class="chip">15 min slots</span>
+        </div>
+        <h1>Order for pickup</h1>
+        <p class="lead">Tap + to add. Then pick a pickup time. That time is taken straight away.</p>
         <div id="shop">
         <p class="lead" id="bookedNote"></p>
         <div class="layout">
@@ -566,7 +572,10 @@
                 document.getElementById("loginNote").textContent = "";
             }
             document.getElementById("logout").hidden = !on;
-            document.getElementById("staffLink").hidden = !on || String(sessionUser.email || "").toLowerCase() !== "jcooper4888@aol.co.uk";
+            const staff = on && String(sessionUser.email || "").toLowerCase() === "jcooper4888@aol.co.uk";
+            document.getElementById("staffLink").hidden = !staff;
+            document.getElementById("staffSwitch").hidden = !staff;
+            if (staff) loadSwitch();
             const bar = document.getElementById("bar");
             bar.hidden = !ordersOpen;
             bar.style.removeProperty("display");
@@ -647,7 +656,7 @@
                     password,
                     options: {
                         data: { name, address: full, postcode },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=15"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=16"
                     }
                 });
                 if (error) {
@@ -702,6 +711,33 @@
             bar.hidden = !ordersOpen;
             if (!ordersOpen) closeSheet();
         }
+        function isStaff() {
+            return !!(sessionUser && String(sessionUser.email || "").toLowerCase() === "jcooper4888@aol.co.uk");
+        }
+        function paintSwitch(open) {
+            const note = document.getElementById("switchNote");
+            const button = document.getElementById("switchBtn");
+            document.getElementById("staffSwitch").hidden = !isStaff();
+            button.dataset.open = open ? "yes" : "no";
+            button.textContent = open ? "Turn orders off" : "Turn orders on";
+            note.textContent = open ? "Orders are open." : "Orders are closed.";
+        }
+        async function shopRow() {
+            const { data, error } = await sb().from("orders").select("id,status").eq("day", "2099-01-01").eq("slot", "ORDERS-OPEN").order("created_at", { ascending: false });
+            if (error) throw error;
+            const rows = data || [];
+            return rows.find((row) => row.status !== "cancelled") || rows[0] || null;
+        }
+        async function loadSwitch() {
+            if (!isStaff()) return;
+            try {
+                const row = await shopRow();
+                paintSwitch(!!(row && row.status !== "cancelled"));
+            } catch (err) {
+                paintSwitch(false);
+                document.getElementById("switchNote").textContent = "Could not check the switch.";
+            }
+        }
         async function loadShopFlag() {
             try {
                 const db = sb();
@@ -714,6 +750,45 @@
             }
             paintShop();
         }
+        document.getElementById("switchBtn").onclick = async () => {
+            const button = document.getElementById("switchBtn");
+            const turningOn = button.dataset.open !== "yes";
+            button.disabled = true;
+            try {
+                const session = (await sb().auth.getSession()).data.session;
+                const row = await shopRow();
+                let error = null;
+                if (turningOn) {
+                    if (row && row.status === "cancelled") {
+                        error = (await sb().from("orders").update({ status: "new" }).eq("id", row.id)).error;
+                    } else if (!row) {
+                        error = (await sb().from("orders").insert({
+                            user_id: session.user.id,
+                            name: "Shop",
+                            address: "Shop",
+                            slot: "ORDERS-OPEN",
+                            day: "2099-01-01",
+                            items: [],
+                            total_pence: 0,
+                            status: "new"
+                        })).error;
+                    }
+                } else if (row && row.status !== "cancelled") {
+                    error = (await sb().from("orders").update({ status: "cancelled" }).eq("id", row.id)).error;
+                }
+                if (error) {
+                    document.getElementById("switchNote").textContent = error.message || "Could not change it.";
+                    return;
+                }
+                ordersOpen = turningOn;
+                paintSwitch(turningOn);
+                paintShop();
+            } catch (err) {
+                document.getElementById("switchNote").textContent = "Could not change it.";
+            } finally {
+                button.disabled = false;
+            }
+        };
         document.getElementById("pay").hidden = true;
         draw();
         paintShop();

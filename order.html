@@ -72,8 +72,16 @@
         .hold b { color:var(--gold2); }
         #chipBg { z-index: 60; }
         #chipAsk { z-index: 70; }
+        #loginBg { z-index: 80; }
+        #loginSheet { z-index: 90; }
+        button.slot.taken { opacity:.38; text-decoration:line-through; }
         .chip-list { display:grid; gap:8px; margin-top:12px; }
         .chip-list button { text-align:left; padding-left:14px; }
+        .login label { display:block; font-weight:700; margin:10px 0 4px; }
+        .login input, .login textarea { width:100%; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:12px; font:inherit; }
+        .login .rowbtns { display:flex; gap:8px; margin-top:12px; }
+        .login .rowbtns .go { flex:1; }
+        #who { color:var(--gold2); font-weight:700; }
         @media (max-width: 800px) {
             .layout { grid-template-columns:1fr; padding-bottom:96px; }
             .basket { display:none; }
@@ -86,7 +94,11 @@
     <header>
         <div class="wrap top">
             <a class="brand" href="/">The Brothers <span>Chips & Fish</span></a>
-            <a class="back" href="/">Back to the van</a>
+            <span style="display:flex;gap:14px;align-items:center">
+                <span id="who"></span>
+                <a class="back" href="/admin.html">Staff</a>
+                <a class="back" href="/">Back to the van</a>
+            </span>
         </div>
     </header>
     <div class="banner"><div class="wrap">Preview. You can click around. We are not taking orders or payment yet.</div></div>
@@ -121,6 +133,26 @@
         <h2 id="chipTitle">Add chips?</h2>
         <div class="chip-list" id="chipChoices"></div>
     </div>
+    <div class="sheet-bg" id="loginBg"></div>
+    <div class="sheet login" id="loginSheet" role="dialog" aria-label="Login">
+        <div class="grab"></div>
+        <h2>Login to book a slot to pickup.</h2>
+        <p class="lead" id="loginNote">Use the same email each time. A new account has to be confirmed from your inbox before it can book.</p>
+        <label for="loginName">Name</label>
+        <input id="loginName" autocomplete="name">
+        <label for="loginAddress">Address</label>
+        <textarea id="loginAddress" rows="2" autocomplete="street-address"></textarea>
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" type="email" autocomplete="email">
+        <label for="loginPass">Password</label>
+        <input id="loginPass" type="password" autocomplete="current-password">
+        <div class="rowbtns">
+            <button class="go" id="doLogin" type="button">Log in</button>
+            <button class="go" id="doJoin" type="button">Create account</button>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="order-config.js"></script>
     <script>
         const FOOD = [
             ["codmeal","Fish","Large cod, med chips & mushy peas","",1140,"images/Large Cod & Chips & Mushy Peas.jpg"],
@@ -400,14 +432,14 @@
         }
         function draw() {
             drawMenu();
-            document.getElementById("desk").innerHTML = "<h2>Basket</h2>" + lines() + "<button class='go' type='button' id='deskGo'" + (count() ? "" : " disabled") + ">Choose a time</button>";
+            document.getElementById("desk").innerHTML = "<h2>Basket</h2>" + lines() + "<button class='go' type='button' id='deskGo'" + (count() ? "" : " disabled") + ">" + (sessionUser ? "Choose a time" : "Login to book a slot") + "</button>";
             const deskGo = document.getElementById("deskGo");
             if (deskGo) deskGo.onclick = openSheet;
             const bar = document.getElementById("bar");
             const food = foodPence();
-            bar.textContent = count() ? ("Basket · " + count() + " · " + money(food)) : "Basket is empty";
+            bar.textContent = !count() ? "Basket is empty" : (sessionUser ? ("Basket · " + count() + " · " + money(food)) : "Login to book a slot");
             document.getElementById("totals").innerHTML = count() ? lines() : "";
-            document.getElementById("pay").textContent = count() ? ("Preview · " + money(food)) : "Add food first";
+            document.getElementById("pay").textContent = count() ? ("Book " + money(food)) : "Add food first";
             document.getElementById("pay").disabled = !count() || !held;
             drawSlots();
         }
@@ -417,11 +449,12 @@
             SLOTS.forEach((slot) => {
                 const btn = document.createElement("button");
                 btn.type = "button";
-                btn.className = "slot" + (held === slot ? " on" : "");
+                const gone = taken.has(slot);
+                btn.className = "slot" + (held === slot ? " on" : "") + (gone ? " taken" : "");
                 const mins = held === slot ? Math.floor(left / 60) : 0;
                 const secs = held === slot ? left % 60 : 0;
-                btn.innerHTML = slot + "<small>" + (held === slot ? ("Held " + mins + ":" + String(secs).padStart(2, "0")) : "Free") + "</small>";
-                btn.onclick = () => hold(slot);
+                btn.innerHTML = slot + "<small>" + (gone ? "Taken" : held === slot ? ("Held " + mins + ":" + String(secs).padStart(2, "0")) : "Free") + "</small>";
+                if (!gone) btn.onclick = () => hold(slot);
                 root.appendChild(btn);
             });
         }
@@ -447,8 +480,20 @@
         }
         function openSheet() {
             if (!count()) return;
-            document.getElementById("bg").classList.add("open");
-            document.getElementById("sheet").classList.add("open");
+            if (!sessionUser) {
+                openLogin();
+                return;
+            }
+            if (!profile || !profile.name || !profile.address) {
+                openLogin();
+                document.getElementById("loginNote").textContent = "Add your name and address, then you can book a slot.";
+                return;
+            }
+            loadTaken().finally(() => {
+                document.getElementById("bg").classList.add("open");
+                document.getElementById("sheet").classList.add("open");
+                drawSlots();
+            });
         }
         function closeSheet() {
             document.getElementById("bg").classList.remove("open");
@@ -457,10 +502,171 @@
         document.getElementById("bar").onclick = openSheet;
         document.getElementById("bg").onclick = closeSheet;
         document.getElementById("chipBg").onclick = closeChips;
-        document.getElementById("pay").onclick = () => {
-            document.getElementById("hold").textContent = "Preview only. Nothing has been charged, and the slot is not booked.";
-        };
+        function londonDate() {
+            return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
+        }
+        let client = null;
+        let sessionUser = null;
+        let profile = null;
+        let taken = new Set();
+        let booking = false;
+        function sb() {
+            const cfg = window.ORDER_CONFIG || {};
+            if (!cfg.url || !cfg.anonKey || !window.supabase) return null;
+            if (!client) client = window.supabase.createClient(cfg.url, cfg.anonKey);
+            return client;
+        }
+        function paintWho() {
+            const el = document.getElementById("who");
+            if (!el) return;
+            el.textContent = sessionUser ? ((profile && profile.name) || sessionUser.email) : "";
+        }
+        function openLogin() {
+            document.getElementById("loginBg").classList.add("open");
+            document.getElementById("loginSheet").classList.add("open");
+        }
+        function closeLogin() {
+            document.getElementById("loginBg").classList.remove("open");
+            document.getElementById("loginSheet").classList.remove("open");
+        }
+        async function loadProfile() {
+            const db = sb();
+            if (!db || !sessionUser) return;
+            const { data } = await db.from("profiles").select("name,address,is_admin").eq("id", sessionUser.id).maybeSingle();
+            profile = data || { name: "", address: "", is_admin: false };
+            const name = document.getElementById("loginName");
+            const address = document.getElementById("loginAddress");
+            if (name && !name.value) name.value = profile.name || "";
+            if (address && !address.value) address.value = profile.address || "";
+            paintWho();
+            draw();
+        }
+        async function loadTaken() {
+            const db = sb();
+            taken = new Set();
+            if (!db) return;
+            const { data } = await db.rpc("booked_slots", { for_day: londonDate() });
+            (data || []).forEach((row) => taken.add(row.slot));
+        }
+        async function saveProfile(name, address) {
+            const db = sb();
+            const { error } = await db.from("profiles").update({ name, address }).eq("id", sessionUser.id);
+            if (!error) profile = Object.assign({}, profile, { name, address });
+            paintWho();
+            return error;
+        }
+        async function afterLogin() {
+            await loadProfile();
+            const name = document.getElementById("loginName").value.trim();
+            const address = document.getElementById("loginAddress").value.trim();
+            if (name && address) await saveProfile(name, address);
+            await loadProfile();
+            if (!profile || !profile.name || !profile.address) {
+                document.getElementById("loginNote").textContent = "Add your name and address, then you can book a slot.";
+                return;
+            }
+            closeLogin();
+            openSheet();
+        }
+        async function bookOrder() {
+            if (!held || !count() || booking) return;
+            const db = sb();
+            if (!db || !sessionUser) {
+                openLogin();
+                return;
+            }
+            booking = true;
+            const slot = held;
+            const items = Object.entries(basket).map(([id, n]) => {
+                const item = lookup(id);
+                return { name: item.name, qty: n, pence: item.pence };
+            });
+            const { error } = await db.from("orders").insert({
+                user_id: sessionUser.id,
+                name: profile.name,
+                address: profile.address,
+                slot: slot,
+                day: londonDate(),
+                items: items,
+                total_pence: foodPence(),
+                status: "new"
+            });
+            booking = false;
+            if (error) {
+                document.getElementById("hold").textContent = error.code === "23505" ? "That slot has just gone. Pick another." : "Could not book that slot. Try again.";
+                if (error.code === "23505") held = "";
+                await loadTaken();
+                draw();
+                return;
+            }
+            Object.keys(basket).forEach((id) => delete basket[id]);
+            held = "";
+            clearInterval(timer);
+            document.getElementById("hold").textContent = "Booked for " + slot + ". Nothing has been charged yet.";
+            draw();
+        }
+        function bootAuth() {
+            const db = sb();
+            document.getElementById("loginBg").onclick = closeLogin;
+            document.getElementById("doLogin").onclick = async () => {
+                const note = document.getElementById("loginNote");
+                if (!sb()) {
+                    note.textContent = "Login is not switched on yet.";
+                    return;
+                }
+                const email = document.getElementById("loginEmail").value.trim();
+                const password = document.getElementById("loginPass").value;
+                const { error } = await sb().auth.signInWithPassword({ email, password });
+                if (error) {
+                    note.textContent = error.message;
+                    return;
+                }
+                sessionUser = (await sb().auth.getSession()).data.session.user;
+                await afterLogin();
+            };
+            document.getElementById("doJoin").onclick = async () => {
+                const note = document.getElementById("loginNote");
+                if (!sb()) {
+                    note.textContent = "Login is not switched on yet.";
+                    return;
+                }
+                const name = document.getElementById("loginName").value.trim();
+                const address = document.getElementById("loginAddress").value.trim();
+                const email = document.getElementById("loginEmail").value.trim();
+                const password = document.getElementById("loginPass").value;
+                if (!name || !address || !email || password.length < 6) {
+                    note.textContent = "Name, address, email and a password of at least 6 characters.";
+                    return;
+                }
+                const { data, error } = await sb().auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: { name, address },
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=7"
+                    }
+                });
+                if (error) {
+                    note.textContent = error.message;
+                    return;
+                }
+                if (!data.session) {
+                    note.textContent = "Check your email and confirm it, then log in.";
+                    return;
+                }
+                sessionUser = data.session.user;
+                await afterLogin();
+            };
+            if (!db) return;
+            db.auth.getSession().then(({ data }) => {
+                sessionUser = data.session && data.session.user;
+                if (sessionUser) loadProfile();
+                else paintWho();
+            });
+        }
+        document.getElementById("pay").onclick = () => { bookOrder(); };
         draw();
+        bootAuth();
     </script>
 </body>
 </html>

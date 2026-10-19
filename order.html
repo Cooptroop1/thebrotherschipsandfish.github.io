@@ -65,6 +65,9 @@
         .sheet-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:40; }
         .sheet-bg.open { display:block; }
         .sheet { position:fixed; left:0; right:0; bottom:0; z-index:50; background:var(--ink); border-radius:22px 22px 0 0; border-top:1px solid var(--line); padding:16px 16px 22px; max-height:92vh; overflow:auto; transform:translateY(110%); transition:transform .2s ease; }
+        @media (min-width: 700px) {
+            .sheet { width:min(480px, calc(100% - 32px)); margin-inline:auto; bottom:16px; border-radius:22px; border:1px solid var(--line); }
+        }
         .sheet.open { transform:none; }
         .grab { width:42px; height:4px; border-radius:99px; background:var(--line); margin:0 auto 12px; }
         .day { color:var(--gold); font-size:.75rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
@@ -91,7 +94,7 @@
         .account { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin:0 0 8px; flex-wrap:wrap; }
         .account[hidden], .panel[hidden], #gate[hidden] { display:none !important; }
         #confirmed[hidden] { display:none; }
-        .confirmed { background:#241c12; border:1px solid var(--gold); border-radius:16px; padding:16px; margin:14px 0 8px; }
+        .confirmed { background:#241c12; border:1px solid var(--gold); border-radius:16px; padding:16px; margin:14px 0 8px; max-width:440px; }
         .confirmed h2 { margin:4px 0 8px; font-size:1.8rem; }
         .confirmed .day { margin-bottom:2px; }
         .login-note { margin:0; color:var(--gold2); font-size:.92rem; flex:1; text-align:right; }

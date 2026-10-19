@@ -76,6 +76,9 @@
         button.slot.on small { color:#3a2e10; }
         .hold { margin-top:12px; background:#241c12; border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
         .hold b { color:var(--gold2); }
+        .holdbar { position:sticky; top:64px; z-index:18; background:#241c12; border:1px solid var(--gold); border-radius:12px; padding:10px 12px; margin:12px 0 0; font-weight:700; }
+        #holdBar[hidden], #cardBox[hidden], #slots[hidden] { display:none !important; }
+        #cardMount { min-height:420px; margin:8px 0 12px; background:#fff; border-radius:12px; overflow:hidden; }
         #chipBg { z-index: 60; }
         #chipAsk { z-index: 70; }
         #loginBg { z-index: 80; }
@@ -111,7 +114,7 @@
             <span style="display:flex;gap:14px;align-items:center">
                 <span id="who"></span>
                 <button id="logout" type="button" hidden style="background:transparent;color:#e8c96a;border:0;font:inherit;font-weight:700;cursor:pointer">Log out</button>
-                <a class="back" id="staffLink" href="/admin.html?v=22" hidden>Staff</a>
+                <a class="back" id="staffLink" href="/admin.html?v=23" hidden>Staff</a>
                 <a class="back" href="/">Back to the van</a>
             </span>
         </div>
@@ -153,6 +156,7 @@
             <p id="confirmedExtra"></p>
             <button class="mini" id="confirmedClose" type="button" style="margin-top:10px">Back to the menu</button>
         </div>
+        <p id="holdBar" class="holdbar" hidden></p>
         <div id="closedBox">
             <h1>Orders are closed</h1>
             <p class="lead">Pickup orders are switched off for now. Log in or sign up above so you are ready when they are switched on.</p>
@@ -180,10 +184,14 @@
         <div class="grab"></div>
         <p class="day">This evening</p>
         <h2>Pick a pickup</h2>
-        <p class="lead">Tap a free time. You then pay by card. Test card 4242 4242 4242 4242, any future date, any three-digit code.</p>
+        <p class="lead">Tap a free time. The card form stays on this page and the 5 minute timer keeps running. Test card 4242 4242 4242 4242, any future date, any three-digit code.</p>
         <div class="grid" id="slots"></div>
         <p class="hold" id="hold">Pick a time. It is held for 5 minutes while you pay. Coming back does not start the timer again.</p>
         <div id="totals"></div>
+        <div id="cardBox" hidden>
+            <div id="cardMount"></div>
+            <button class="mini" id="cardBack" type="button">Keep the food and go back</button>
+        </div>
         <button class="go" id="pay" type="button" disabled>Pay</button>
     </div>
     <div class="sheet-bg" id="chipBg"></div>
@@ -192,6 +200,7 @@
         <h2 id="chipTitle">Add chips?</h2>
         <div class="chip-list" id="chipChoices"></div>
     </div>
+    <script src="https://js.stripe.com/v3/"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="order-config.js?v=4"></script>
     <script>
@@ -262,6 +271,8 @@
         let holdUntil = 0;
         let left = 0;
         let timer = 0;
+        let checkout = null;
+        let cardSession = "";
         const money = (p) => "£" + (p / 100).toFixed(2);
         function lookup(id) {
             const food = FOOD.find((row) => row[0] === id);
@@ -274,10 +285,43 @@
             return Object.entries(basket).reduce((sum, [id, n]) => sum + n * lookup(id).pence, 0);
         }
         function count() { return Object.values(basket).reduce((a, b) => a + b, 0); }
+        function saveBasket() {
+            try {
+                sessionStorage.setItem("brothers-basket", JSON.stringify({ basket: basket, extras: extras }));
+            } catch (err) {}
+        }
+        function clearBasket() {
+            Object.keys(basket).forEach((id) => { delete basket[id]; });
+            Object.keys(extras).forEach((id) => { delete extras[id]; });
+            try { sessionStorage.removeItem("brothers-basket"); } catch (err) {}
+        }
+        function loadBasket() {
+            try {
+                const raw = sessionStorage.getItem("brothers-basket");
+                if (!raw) return;
+                const saved = JSON.parse(raw);
+                const extraIn = saved && saved.extras && typeof saved.extras === "object" ? saved.extras : {};
+                Object.keys(extraIn).forEach((id) => {
+                    const item = extraIn[id];
+                    if (!item || typeof item.name !== "string" || id.length > 80) return;
+                    const pence = Math.round(Number(item.pence));
+                    if (!pence || pence < 1) return;
+                    extras[id] = { name: item.name.slice(0, 80), pence: pence };
+                });
+                const items = saved && saved.basket && typeof saved.basket === "object" ? saved.basket : {};
+                Object.keys(items).forEach((id) => {
+                    const qty = Math.floor(Number(items[id]));
+                    if (qty < 1 || qty > 20 || !lookup(id)) return;
+                    basket[id] = qty;
+                });
+            } catch (err) {}
+        }
         function add(id, by) {
             const next = (basket[id] || 0) + by;
             if (next <= 0) delete basket[id];
             else basket[id] = next;
+            if (checkout) unmountCard();
+            saveBasket();
             draw();
         }
         function needsChips(row) {
@@ -549,13 +593,21 @@
                 if (left <= 0) {
                     clearInterval(holdClock);
                     held = "";
+                    const barHold = document.getElementById("holdBar");
+                    if (barHold) barHold.hidden = true;
                     if (note) note.textContent = "That 5 minute hold has finished. The time is free again.";
                     loadTaken().then(() => drawSlots());
                     return;
                 }
                 const mins = Math.floor(left / 60);
                 const secs = String(left % 60).padStart(2, "0");
-                if (note) note.textContent = held + " is held for " + mins + ":" + secs + ". Add food if you need to, then press that time again. The timer does not start over.";
+                const line = held + " is held for " + mins + ":" + secs + ". Add food if you need to, then press that time again. The timer does not start over.";
+                if (note) note.textContent = line;
+                const barHold = document.getElementById("holdBar");
+                if (barHold) {
+                    barHold.hidden = false;
+                    barHold.textContent = line;
+                }
                 drawSlots();
             }, 1000);
         }
@@ -571,6 +623,56 @@
             drawSlots();
             if (forceSheet && ordersOpen) openSheet();
         }
+        function unmountCard() {
+            if (checkout) {
+                try { checkout.destroy(); } catch (err) {}
+                checkout = null;
+            }
+            cardSession = "";
+            const box = document.getElementById("cardBox");
+            const slots = document.getElementById("slots");
+            if (box) box.hidden = true;
+            if (slots) slots.hidden = false;
+        }
+        async function mountCard(data) {
+            if (!window.Stripe || !data.publishable_key || !data.client_secret) return false;
+            unmountCard();
+            const box = document.getElementById("cardBox");
+            const mount = document.getElementById("cardMount");
+            const slots = document.getElementById("slots");
+            mount.innerHTML = "";
+            slots.hidden = true;
+            box.hidden = false;
+            try {
+                const stripeJs = window.Stripe(data.publishable_key);
+                checkout = await stripeJs.initEmbeddedCheckout({
+                    clientSecret: data.client_secret,
+                    onComplete: function () { finishCard(data.session_id); }
+                });
+                checkout.mount("#cardMount");
+                cardSession = data.session_id || "";
+                return true;
+            } catch (err) {
+                unmountCard();
+                return false;
+            }
+        }
+        async function finishCard(sessionId) {
+            unmountCard();
+            closeSheet();
+            showOrder(null, "checking", false);
+            const paid = await payCall({ action: "confirm", session_id: sessionId });
+            if (paid && paid.ok) {
+                held = "";
+                left = 0;
+                clearInterval(holdClock);
+                const barHold = document.getElementById("holdBar");
+                if (barHold) barHold.hidden = true;
+                clearBasket();
+                draw();
+                showOrder(paid, "paid", true);
+            } else showOrder(paid, "failed", false);
+        }
         async function takeSlot(slot) {
             if (!ordersOpen || booking || !sessionUser) return;
             if (taken.has(slot) && !(held === slot && left > 0)) return;
@@ -581,7 +683,7 @@
             const items = Object.entries(basket).map(([id, n]) => ({ id, qty: n }));
             const data = await payCall({ action: "create", slot, items });
             booking = false;
-            if (!data || data.error || !data.url) {
+            if (!data || data.error || (!data.url && !data.client_secret)) {
                 document.getElementById("hold").textContent = (data && data.error) || "Card payment is not switched on yet.";
                 await loadTaken();
                 drawSlots();
@@ -593,7 +695,17 @@
                 left = Math.max(0, Math.ceil((holdUntil - Date.now()) / 1000));
                 tickHold();
             }
-            window.location.href = data.url;
+            if (checkout && cardSession && cardSession === data.session_id) return;
+            if (data.client_secret && data.publishable_key) {
+                document.getElementById("hold").textContent = "Card form is on this page. The timer above keeps going.";
+                const mounted = await mountCard(data);
+                if (mounted) return;
+            }
+            if (data.url) {
+                window.location.href = data.url;
+                return;
+            }
+            document.getElementById("hold").textContent = "Card payment could not open on this page. The time is still held.";
         }
         function openSheet() {
             if (!ordersOpen) return;
@@ -614,12 +726,22 @@
         }
         function closeSheet() {
             clearInterval(slotPoll);
+            unmountCard();
             document.getElementById("bg").classList.remove("open");
             document.getElementById("sheet").classList.remove("open");
         }
         document.getElementById("bar").onclick = openSheet;
         document.getElementById("bg").onclick = closeSheet;
         document.getElementById("chipBg").onclick = closeChips;
+        document.getElementById("cardBack").onclick = function () {
+            unmountCard();
+            const note = document.getElementById("hold");
+            if (note && held && left > 0) {
+                const mins = Math.floor(left / 60);
+                const secs = String(left % 60).padStart(2, "0");
+                note.textContent = held + " is still held for " + mins + ":" + secs + ". Add food, then press that time again. The timer does not start over.";
+            }
+        };
         function londonDate() {
             return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
         }
@@ -799,7 +921,7 @@
                     email: email,
                     options: {
                         shouldCreateUser: false,
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=22"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=23"
                     }
                 });
                 if (error) {
@@ -849,7 +971,7 @@
                     password,
                     options: {
                         data: { name, address: full, postcode },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=22"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=23"
                     }
                 });
                 if (error) {
@@ -895,11 +1017,15 @@
                         held = "";
                         left = 0;
                         clearInterval(holdClock);
+                        const barHold = document.getElementById("holdBar");
+                        if (barHold) barHold.hidden = true;
+                        clearBasket();
+                        draw();
                         showOrder(paid, "paid", true);
                     } else {
                         showOrder(paid, "failed", false);
                     }
-                    history.replaceState({}, "", "/order.html?v=22");
+                    history.replaceState({}, "", "/order.html?v=23");
                     return;
                 }
                 if (sessionUser) {
@@ -907,7 +1033,7 @@
                         document.getElementById("bookedNote").textContent = "No payment was taken. The time stays held until the 5 minute timer ends.";
                         showOrder(null, "back", false);
                         resumeHold(true);
-                        history.replaceState({}, "", "/order.html?v=22");
+                        history.replaceState({}, "", "/order.html?v=23");
                         return;
                     }
                     resumeHold(false);
@@ -1008,6 +1134,7 @@
             }
         };
         document.getElementById("pay").hidden = true;
+        loadBasket();
         bootAuth();
         draw();
         paintShop();

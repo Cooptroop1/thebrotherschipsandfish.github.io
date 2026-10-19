@@ -36,7 +36,7 @@
 </head>
 <body>
     <div class="wrap">
-        <p><a href="/order.html?v=18">Back to the menu</a></p>
+        <p><a href="/order.html?v=19">Back to the menu</a></p>
         <h1>Today's queue</h1>
         <p class="lead" id="note" style="color:#e8c96a;font-size:1.15rem">Log in with the staff email.</p>
         <div id="login">
@@ -155,35 +155,7 @@
             }
             const today = data || [];
             await freeStuck(today);
-            const rows = today.filter((order) => order.status !== "unpaid" && order.status !== "cancelled" && order.slot !== "ORDERS-OPEN");
-            const cleared = {};
-            today.forEach((order) => {
-                const mark = clearedTime(order);
-                if (!mark) return;
-                cleared[mark.time] = Math.max(cleared[mark.time] || 0, mark.at);
-            });
-            try {
-                const session = (await sb.auth.getSession()).data.session;
-                const cfg = window.ORDER_CONFIG || {};
-                if (session && cfg.payUrl) {
-                    const res = await fetch(cfg.payUrl, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-                        body: JSON.stringify({ action: "queue" })
-                    });
-                    const extra = await res.json();
-                    const have = new Set(rows.map((order) => order.slot));
-                    const newest = {};
-                    (extra.orders || []).forEach((order) => {
-                        if (!order || have.has(order.slot) || SLOTS.indexOf(order.slot) === -1) return;
-                        const at = new Date(order.created_at).getTime();
-                        if (cleared[order.slot] && at <= cleared[order.slot]) return;
-                        const prev = newest[order.slot];
-                        if (!prev || at > new Date(prev.created_at).getTime()) newest[order.slot] = order;
-                    });
-                    Object.keys(newest).forEach((slot) => rows.push(newest[slot]));
-                }
-            } catch (err) {}
+            const rows = today.filter((order) => order.status !== "unpaid" && order.status !== "cancelled" && order.slot !== "ORDERS-OPEN" && String(order.id).indexOf("stripe:") !== 0);
             rows.sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
             const list = document.getElementById("list");
             list.innerHTML = "";
@@ -346,7 +318,7 @@
                 email: email,
                 options: {
                     shouldCreateUser: false,
-                    emailRedirectTo: "https://thebrotherschipsandfish.co.uk/admin.html?v=18"
+                    emailRedirectTo: "https://thebrotherschipsandfish.co.uk/admin.html?v=19"
                 }
             });
             note.textContent = error

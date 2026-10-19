@@ -36,15 +36,17 @@
 </head>
 <body>
     <div class="wrap">
-        <p><a href="/order.html?v=16">Back to the menu</a></p>
+        <p><a href="/order.html?v=17">Back to the menu</a></p>
         <h1>Today's queue</h1>
         <p class="lead" id="note" style="color:#e8c96a;font-size:1.15rem">Log in with the staff email.</p>
         <div id="login">
             <label for="email">Email</label>
-            <input id="email" type="email" autocomplete="username">
+            <input id="email" type="email" autocomplete="username" value="jcooper4888@aol.co.uk">
             <label for="pass">Password</label>
             <input id="pass" type="password" autocomplete="current-password">
             <p style="margin-top:12px"><button id="go" type="button">Log in</button></p>
+            <p style="margin-top:10px"><button id="emailLink" type="button" style="background:#3a3328;color:#f4ead8">Email me a login link</button></p>
+            <p class="lead">Use the staff email. If the password is rejected, press the link button and open that inbox. AOL mail is at mail.aol.com, not inside Gmail. Customers can sign up on the order page even while orders are closed.</p>
         </div>
         <div class="card" id="switchCard" hidden>
             <div class="switch">
@@ -219,7 +221,10 @@
                     error = (await client().from("orders").update({ status: "cancelled" }).eq("id", row.id)).error;
                 }
                 if (error) {
-                    document.getElementById("switchNote").textContent = error.message || "Could not change it.";
+                    const raw = error.message || "Could not change it.";
+                    document.getElementById("switchNote").textContent = /policy|permission|row-level/i.test(raw)
+                        ? "Logged in, but the database blocked the switch. It needs the staff setup run once in Supabase."
+                        : raw;
                     return;
                 }
                 paintSwitch(turningOn);
@@ -243,13 +248,36 @@
                     password: document.getElementById("pass").value
                 });
                 if (error) {
-                    note.textContent = error.message;
+                    const low = (error.message || "").toLowerCase();
+                    if (low.indexOf("confirm") !== -1) note.textContent = "That email is not confirmed yet. Press Email me a login link, then open the inbox. AOL mail is at mail.aol.com.";
+                    else if (low.indexOf("invalid") !== -1) note.textContent = "That password was not accepted. Press Email me a login link, or use the new staff password from the setup.";
+                    else note.textContent = error.message;
                     return;
                 }
                 await showQueue();
             } catch (err) {
                 note.textContent = err && err.message ? err.message : "Login failed.";
             }
+        };
+        document.getElementById("emailLink").onclick = async () => {
+            const note = document.getElementById("note");
+            const sb = client();
+            if (!sb) {
+                note.textContent = "Login is not switched on yet.";
+                return;
+            }
+            const email = document.getElementById("email").value.trim();
+            note.textContent = "Sending the login link...";
+            const { error } = await sb.auth.signInWithOtp({
+                email: email,
+                options: {
+                    shouldCreateUser: false,
+                    emailRedirectTo: "https://thebrotherschipsandfish.co.uk/admin.html?v=17"
+                }
+            });
+            note.textContent = error
+                ? (error.message || "Could not send the link.")
+                : "Login link sent. Open that inbox and tap the link. AOL mail is at mail.aol.com, not inside Gmail.";
         };
         const ready = client();
         if (ready) {

@@ -22,8 +22,9 @@
         .back { color:var(--cream); text-decoration:none; font-weight:700; font-size:.9rem; }
         .banner { background:#241c12; border-bottom:1px solid var(--line); color:var(--cream); padding:10px 0; font-size:.95rem; }
         .banner[hidden], #openShop[hidden], #closedBox[hidden], #staffSwitch[hidden] { display:none; }
-        #staffSwitch { display:flex; justify-content:space-between; align-items:center; gap:12px; max-width:520px; margin:14px 0 0 auto; }
-        #staffSwitch .lead { margin:0; }
+        #staffSwitch { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:14px 0; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; }
+        #staffSwitch .lead { margin:0; color:var(--paper); font-weight:700; }
+        #staffSwitch .mini { background:var(--gold); color:var(--ink); border-color:var(--gold); padding:12px 16px; }
         .bar[hidden] { display:none !important; }
         #closedBox { padding:28px 0 80px; }
         .chips { display:flex; flex-wrap:wrap; gap:8px; padding:14px 0 0; }
@@ -89,7 +90,8 @@
         .login-note { margin:0; color:var(--gold2); font-size:.92rem; flex:1; text-align:right; }
         .mini { border:1px solid var(--line); background:transparent; color:var(--gold2); border-radius:999px; padding:6px 14px; font:inherit; font-weight:700; font-size:.9rem; cursor:pointer; }
         .mini.on { background:var(--gold); color:var(--ink); border-color:var(--gold); }
-        .panel { max-width:360px; margin:0 0 14px auto; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px 14px; }
+        .panel { max-width:420px; margin:0 0 14px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px 14px; }
+        .auth-msg { color:var(--gold2); font-weight:700; margin-top:10px; }
         #who { color:var(--gold2); font-weight:700; }
         @media (max-width: 800px) {
             .layout { grid-template-columns:1fr; padding-bottom:96px; }
@@ -106,7 +108,7 @@
             <span style="display:flex;gap:14px;align-items:center">
                 <span id="who"></span>
                 <button id="logout" type="button" hidden style="background:transparent;color:#e8c96a;border:0;font:inherit;font-weight:700;cursor:pointer">Log out</button>
-                <a class="back" id="staffLink" href="/admin.html?v=16" hidden>Staff</a>
+                <a class="back" id="staffLink" href="/admin.html?v=17" hidden>Staff</a>
                 <a class="back" href="/">Back to the van</a>
             </span>
         </div>
@@ -118,7 +120,7 @@
             <button class="mini" id="showLogin" type="button">Log in</button>
             <button class="mini" id="showJoin" type="button">Sign up</button>
         </div>
-        <div id="gate" class="login panel" hidden>
+        <div id="gate" class="login panel">
             <div id="joinFields" hidden>
                 <label for="loginName">Name</label>
                 <input id="loginName" autocomplete="name">
@@ -132,6 +134,8 @@
             <label for="loginPass">Password</label>
             <input id="loginPass" type="password" autocomplete="current-password">
             <button class="go" id="doGo" type="button" style="margin-top:10px">Log in</button>
+            <p id="authMsg" class="auth-msg"></p>
+            <button class="mini" id="emailLink" type="button" style="width:100%;margin-top:8px">Email me a login link</button>
         </div>
         <div id="staffSwitch" hidden>
             <p class="lead" id="switchNote">Orders are closed.</p>
@@ -139,7 +143,7 @@
         </div>
         <div id="closedBox">
             <h1>Orders are closed</h1>
-            <p class="lead">Pickup orders are switched off for now. You can still log in or sign up so you are ready.</p>
+            <p class="lead">Pickup orders are switched off for now. Log in or sign up above so you are ready when they are switched on.</p>
         </div>
         <div id="openShop" hidden>
         <div class="chips">
@@ -267,9 +271,23 @@
             return row[1] !== "Chips" && row[1] !== "Sauces" && !/chips/i.test(row[2]);
         }
         function askAuth(message) {
-            document.getElementById("loginNote").textContent = message;
+            document.getElementById("authMsg").textContent = message;
+            document.getElementById("loginNote").textContent = "";
             document.getElementById("gate").hidden = false;
-            document.getElementById("account").scrollIntoView({ block: "start" });
+            formHeld = true;
+            document.getElementById("gate").scrollIntoView({ block: "start" });
+        }
+        function authSay(message) {
+            const box = document.getElementById("authMsg");
+            if (box) box.textContent = message || "";
+            document.getElementById("loginNote").textContent = "";
+        }
+        function friendlyAuth(error) {
+            const raw = (error && error.message) || "Could not log in.";
+            const low = raw.toLowerCase();
+            if (low.indexOf("confirm") !== -1) return "That email is not confirmed yet. Press Email me a login link, then open the inbox and tap the link. AOL mail is at mail.aol.com, not in Gmail.";
+            if (low.indexOf("invalid") !== -1) return "That email or password was not accepted. Press Email me a login link, then open the inbox and tap it.";
+            return raw;
         }
         function plusItem(row) {
             if (!sessionUser) {
@@ -563,14 +581,13 @@
             if (!client) client = window.supabase.createClient(cfg.url, cfg.anonKey);
             return client;
         }
+        let formHeld = false;
         function paintWho() {
             const el = document.getElementById("who");
             const on = !!sessionUser;
             document.getElementById("account").hidden = on;
-            if (on) {
-                document.getElementById("gate").hidden = true;
-                document.getElementById("loginNote").textContent = "";
-            }
+            document.getElementById("gate").hidden = on || (ordersOpen && !formHeld);
+            if (on) authSay("");
             document.getElementById("logout").hidden = !on;
             const staff = on && String(sessionUser.email || "").toLowerCase() === "jcooper4888@aol.co.uk";
             document.getElementById("staffLink").hidden = !staff;
@@ -582,9 +599,11 @@
             if (el) el.textContent = on ? ((profile && profile.name) || sessionUser.email) : "";
         }
         function showJoin(on) {
+            formHeld = true;
             document.getElementById("joinFields").hidden = !on;
             document.getElementById("gate").hidden = false;
             document.getElementById("doGo").textContent = on ? "Create account" : "Log in";
+            document.getElementById("emailLink").hidden = on;
             document.getElementById("showLogin").classList.toggle("on", !on);
             document.getElementById("showJoin").classList.toggle("on", on);
         }
@@ -619,6 +638,35 @@
             let mode = "login";
             document.getElementById("showLogin").onclick = () => { mode = "login"; showJoin(false); };
             document.getElementById("showJoin").onclick = () => { mode = "join"; showJoin(true); };
+            document.getElementById("emailLink").onclick = async () => {
+                if (!sb()) {
+                    authSay("Login is not switched on yet.");
+                    return;
+                }
+                const email = document.getElementById("loginEmail").value.trim();
+                if (!email) {
+                    authSay("Type the email first, then press Email me a login link.");
+                    return;
+                }
+                authSay("Sending the login link...");
+                const { error } = await sb().auth.signInWithOtp({
+                    email: email,
+                    options: {
+                        shouldCreateUser: false,
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=17"
+                    }
+                });
+                if (error) {
+                    const low = (error.message || "").toLowerCase();
+                    if (low.indexOf("not found") !== -1 || low.indexOf("signups not allowed") !== -1 || low.indexOf("otp") !== -1) {
+                        authSay("No account for that email yet. Press Sign up. You can make an account while orders are closed.");
+                        return;
+                    }
+                    authSay(error.message);
+                    return;
+                }
+                authSay("Login link sent. Open that inbox and tap the link. AOL mail is at mail.aol.com, not inside Gmail.");
+            };
             document.getElementById("logout").onclick = async () => {
                 if (sb()) await sb().auth.signOut();
                 sessionUser = null;
@@ -626,9 +674,8 @@
                 paintWho();
             };
             document.getElementById("doGo").onclick = async () => {
-                const note = document.getElementById("loginNote");
                 if (!sb()) {
-                    note.textContent = "Login is not switched on yet.";
+                    authSay("Login is not switched on yet.");
                     return;
                 }
                 const email = document.getElementById("loginEmail").value.trim();
@@ -636,7 +683,7 @@
                 if (mode === "login") {
                     const { error } = await sb().auth.signInWithPassword({ email, password });
                     if (error) {
-                        note.textContent = error.message;
+                        authSay(friendlyAuth(error));
                         return;
                     }
                     sessionUser = (await sb().auth.getSession()).data.session.user;
@@ -647,7 +694,7 @@
                 const address = document.getElementById("loginAddress").value.trim();
                 const postcode = document.getElementById("loginPostcode").value.trim().toUpperCase();
                 if (!name || !address || !postcode || !email || password.length < 6) {
-                    note.textContent = "Name, address, postcode, email and a password of at least 6 characters.";
+                    authSay("Name, address, postcode, email and a password of at least 6 characters.");
                     return;
                 }
                 const full = address + ", " + postcode;
@@ -656,15 +703,15 @@
                     password,
                     options: {
                         data: { name, address: full, postcode },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=16"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=17"
                     }
                 });
                 if (error) {
-                    note.textContent = error.message;
+                    authSay(error.message);
                     return;
                 }
                 if (!data.session) {
-                    note.textContent = "Check your email and confirm it, then press Log in.";
+                    authSay("Account made. Check that email and tap the confirm link, then press Log in. AOL mail is at mail.aol.com.");
                     mode = "login";
                     showJoin(false);
                     return;
@@ -710,6 +757,7 @@
             const bar = document.getElementById("bar");
             bar.hidden = !ordersOpen;
             if (!ordersOpen) closeSheet();
+            paintWho();
         }
         function isStaff() {
             return !!(sessionUser && String(sessionUser.email || "").toLowerCase() === "jcooper4888@aol.co.uk");
@@ -777,7 +825,10 @@
                     error = (await sb().from("orders").update({ status: "cancelled" }).eq("id", row.id)).error;
                 }
                 if (error) {
-                    document.getElementById("switchNote").textContent = error.message || "Could not change it.";
+                    const raw = error.message || "Could not change it.";
+                    document.getElementById("switchNote").textContent = /policy|permission|row-level/i.test(raw)
+                        ? "Logged in, but the database blocked the switch. It needs the staff setup run once in Supabase."
+                        : raw;
                     return;
                 }
                 ordersOpen = turningOn;

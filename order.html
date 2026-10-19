@@ -647,7 +647,7 @@
                     password,
                     options: {
                         data: { name, address: full, postcode },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=14"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=15"
                     }
                 });
                 if (error) {
@@ -704,8 +704,11 @@
         }
         async function loadShopFlag() {
             try {
-                const data = await payCall({ action: "shop" });
-                ordersOpen = !!(data && data.open === true);
+                const db = sb();
+                if (!db) throw new Error("closed");
+                const { data, error } = await db.rpc("booked_slots", { for_day: "2099-01-01" });
+                if (error) throw error;
+                ordersOpen = (data || []).some((row) => row.slot === "ORDERS-OPEN");
             } catch (err) {
                 ordersOpen = false;
             }

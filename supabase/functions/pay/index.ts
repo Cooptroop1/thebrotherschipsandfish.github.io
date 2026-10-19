@@ -54,8 +54,8 @@ const FOOD: Record<string, { name: string; pence: number; kids?: boolean; taster
   kidssausage: { name: "Kids sausage, chips & a drink", pence: 400, kids: true },
   kidsfishcake: { name: "Kids fishcake, chips & a drink", pence: 400, kids: true },
   kidsnug: { name: "Kids 4 chicken nuggets, chips & a drink", pence: 400, kids: true },
-  kidscod: { name: "Kids 4 cod bits, chips & a drink", pence: 500, kids: true },
-  kidscodfish: { name: "Kids cod, chips & a drink", pence: 500, kids: true },
+  kidscod: { name: "Kids 4 cod bits, chips & a drink", pence: 400, kids: true },
+  kidscodfish: { name: "Kids cod, chips & a drink", pence: 400, kids: true },
 };
 
 const CANS: Record<string, string> = {

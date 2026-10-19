@@ -29,7 +29,7 @@
     <div class="wrap">
         <p><a href="/order.html?v=7">Back to the menu</a></p>
         <h1>Today's queue</h1>
-        <p class="lead" id="note">Log in with the staff email.</p>
+        <p class="lead" id="note" style="color:#e8c96a;font-size:1.15rem">Log in with the staff email.</p>
         <div id="login">
             <label for="email">Email</label>
             <input id="email" type="email" autocomplete="username">
@@ -51,7 +51,13 @@
             return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
         }
         function esc(value) {
-            return String(value == null ? "" : value).replace(/[&<>"]/g, (ch) => ({ "&": "&", "<": "<", ">": ">", '"': """ }[ch]));
+            var amp = String.fromCharCode(38);
+            return String(value == null ? "" : value).replace(/[&<>"]/g, function (ch) {
+                if (ch === amp) return amp + "amp;";
+                if (ch === "<") return amp + "lt;";
+                if (ch === ">") return amp + "gt;";
+                return amp + "quot;";
+            });
         }
         function money(pence) { return "£" + (pence / 100).toFixed(2); }
         function client() {
@@ -120,20 +126,26 @@
             client().channel("queue").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, loadOrders).subscribe();
         }
         document.getElementById("go").onclick = async () => {
-            const sb = client();
-            if (!sb) {
-                document.getElementById("note").textContent = "Login is not switched on yet.";
-                return;
+            const note = document.getElementById("note");
+            note.textContent = "Checking...";
+            try {
+                const sb = client();
+                if (!sb) {
+                    note.textContent = "Login is not switched on yet.";
+                    return;
+                }
+                const { error } = await sb.auth.signInWithPassword({
+                    email: document.getElementById("email").value.trim(),
+                    password: document.getElementById("pass").value
+                });
+                if (error) {
+                    note.textContent = error.message;
+                    return;
+                }
+                await showQueue();
+            } catch (err) {
+                note.textContent = err && err.message ? err.message : "Login failed.";
             }
-            const { error } = await sb.auth.signInWithPassword({
-                email: document.getElementById("email").value.trim(),
-                password: document.getElementById("pass").value
-            });
-            if (error) {
-                document.getElementById("note").textContent = error.message;
-                return;
-            }
-            showQueue();
         };
         const ready = client();
         if (ready) {

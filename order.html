@@ -80,6 +80,7 @@
         .login label { display:block; font-weight:700; font-size:.82rem; margin:8px 0 3px; }
         .login input, .login textarea { width:100%; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:8px 10px; font:inherit; }
         .account { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin:0 0 8px; flex-wrap:wrap; }
+        .account[hidden], .panel[hidden] { display:none; }
         .login-note { margin:0; color:var(--gold2); font-size:.92rem; flex:1; text-align:right; }
         .mini { border:1px solid var(--line); background:transparent; color:var(--gold2); border-radius:999px; padding:6px 14px; font:inherit; font-weight:700; font-size:.9rem; cursor:pointer; }
         .mini.on { background:var(--gold); color:var(--ink); border-color:var(--gold); }
@@ -553,7 +554,10 @@
             const el = document.getElementById("who");
             const on = !!sessionUser;
             document.getElementById("account").hidden = on;
-            if (on) document.getElementById("gate").hidden = true;
+            if (on) {
+                document.getElementById("gate").hidden = true;
+                document.getElementById("loginNote").textContent = "";
+            }
             document.getElementById("logout").hidden = !on;
             document.getElementById("staffLink").hidden = !on || String(sessionUser.email || "").toLowerCase() !== "jcooper4888@aol.co.uk";
             const bar = document.getElementById("bar");

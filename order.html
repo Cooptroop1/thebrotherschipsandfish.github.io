@@ -86,7 +86,10 @@
         .login label { display:block; font-weight:700; font-size:.82rem; margin:8px 0 3px; }
         .login input, .login textarea { width:100%; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:8px 10px; font:inherit; }
         .account { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin:0 0 8px; flex-wrap:wrap; }
-        .account[hidden], .panel[hidden] { display:none; }
+        #confirmed[hidden] { display:none; }
+        .confirmed { background:#241c12; border:1px solid var(--gold); border-radius:16px; padding:16px; margin:14px 0 8px; }
+        .confirmed h2 { margin:4px 0 8px; font-size:1.8rem; }
+        .confirmed .day { margin-bottom:2px; }
         .login-note { margin:0; color:var(--gold2); font-size:.92rem; flex:1; text-align:right; }
         .mini { border:1px solid var(--line); background:transparent; color:var(--gold2); border-radius:999px; padding:6px 14px; font:inherit; font-weight:700; font-size:.9rem; cursor:pointer; }
         .mini.on { background:var(--gold); color:var(--ink); border-color:var(--gold); }
@@ -108,7 +111,7 @@
             <span style="display:flex;gap:14px;align-items:center">
                 <span id="who"></span>
                 <button id="logout" type="button" hidden style="background:transparent;color:#e8c96a;border:0;font:inherit;font-weight:700;cursor:pointer">Log out</button>
-                <a class="back" id="staffLink" href="/admin.html?v=20" hidden>Staff</a>
+                <a class="back" id="staffLink" href="/admin.html?v=21" hidden>Staff</a>
                 <a class="back" href="/">Back to the van</a>
             </span>
         </div>
@@ -141,7 +144,15 @@
             <p class="lead" id="switchNote">Orders are closed.</p>
             <button class="mini" id="switchBtn" type="button">Turn orders on</button>
         </div>
-        <div id="closedBox">
+        <div id="confirmed" class="confirmed" hidden>
+            <p class="day" id="confirmedKicker">Order confirmed</p>
+            <h2 id="confirmedTitle">Order confirmed</h2>
+            <p id="confirmedBody"></p>
+            <p id="confirmedWho" class="lead"></p>
+            <div id="confirmedList"></div>
+            <p id="confirmedExtra"></p>
+            <button class="mini" id="confirmedClose" type="button" style="margin-top:10px">Back to the menu</button>
+        </div>
             <h1>Orders are closed</h1>
             <p class="lead">Pickup orders are switched off for now. Log in or sign up above so you are ready when they are switched on.</p>
         </div>
@@ -674,7 +685,100 @@
             await loadProfile();
             paintWho();
         }
+        function showOrder(paid, mode, remember) {
+            const box = document.getElementById("confirmed");
+            const title = document.getElementById("confirmedTitle");
+            const body = document.getElementById("confirmedBody");
+            const who = document.getElementById("confirmedWho");
+            const list = document.getElementById("confirmedList");
+            const extra = document.getElementById("confirmedExtra");
+            const kicker = document.getElementById("confirmedKicker");
+            box.hidden = false;
+            list.innerHTML = "";
+            who.textContent = "";
+            extra.textContent = "";
+            if (mode === "checking") {
+                kicker.textContent = "Card payment";
+                title.textContent = "Checking the payment...";
+                body.textContent = "One moment. Don't close this page.";
+                return;
+            }
+            if (mode === "login") {
+                kicker.textContent = "Card payment";
+                title.textContent = "Log in to see the order";
+                body.textContent = "If the bank said the payment went through, log in with the same email. This page will then show the order.";
+                return;
+            }
+            if (mode === "back") {
+                kicker.textContent = "Not paid";
+                title.textContent = "No payment was taken";
+                body.textContent = "The time stays held until the 5 minute timer ends. You can add food and press that time again. The timer does not start over.";
+                box.scrollIntoView({ block: "start" });
+                return;
+            }
+            if (mode !== "paid" || !paid || !paid.ok) {
+                kicker.textContent = "Not paid";
+                title.textContent = "The card payment did not finish";
+                body.textContent = (paid && paid.error) || "No money was taken. Pick the time again if it is still free.";
+                box.scrollIntoView({ block: "start" });
+                return;
+            }
+            kicker.textContent = "Order confirmed";
+            title.textContent = "Pickup at " + (paid.slot || "");
+            body.textContent = "Paid. We'll have this ready for " + (paid.slot || "your time") + ".";
+            (paid.items || []).forEach((item) => {
+                const row = document.createElement("div");
+                row.className = "line";
+                const left = document.createElement("span");
+                left.textContent = item.qty + " × " + item.name;
+                const right = document.createElement("span");
+                right.textContent = money((item.qty || 1) * (item.pence || 0));
+                row.append(left, right);
+                list.appendChild(row);
+            });
+            const total = document.createElement("div");
+            total.className = "line";
+            const totalName = document.createElement("strong");
+            totalName.textContent = "Paid";
+            const totalPrice = document.createElement("strong");
+            totalPrice.textContent = money(paid.total_pence || 0);
+            total.append(totalName, totalPrice);
+            list.appendChild(total);
+            if (paid.name) who.textContent = paid.name + (paid.address ? " · " + paid.address : "");
+            extra.textContent = paid.saved === false
+                ? "Paid. If it is not on the staff list in a minute, tell us when you collect."
+                : "It's on the list for " + paid.slot + ".";
+            if (remember) {
+                try {
+                    sessionStorage.setItem("brothers-order", JSON.stringify({
+                        at: Date.now(),
+                        ok: true,
+                        slot: paid.slot,
+                        name: paid.name || "",
+                        address: paid.address || "",
+                        items: paid.items || [],
+                        total_pence: paid.total_pence || 0,
+                        saved: paid.saved !== false
+                    }));
+                } catch (err) {}
+            }
+            box.scrollIntoView({ block: "start" });
+        }
+        function restoreOrder() {
+            try {
+                const raw = sessionStorage.getItem("brothers-order");
+                if (!raw) return;
+                const saved = JSON.parse(raw);
+                if (!saved || !saved.ok || Date.now() - Number(saved.at) > 3 * 60 * 60 * 1000) return;
+                showOrder(saved, "paid", false);
+            } catch (err) {}
+        }
+        function hideOrder() {
+            document.getElementById("confirmed").hidden = true;
+            try { sessionStorage.removeItem("brothers-order"); } catch (err) {}
+        }
         function bootAuth() {
+            document.getElementById("confirmedClose").onclick = hideOrder;
             const db = sb();
             let mode = "login";
             document.getElementById("showLogin").onclick = () => { mode = "login"; showJoin(false); };
@@ -694,7 +798,7 @@
                     email: email,
                     options: {
                         shouldCreateUser: false,
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=20"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=21"
                     }
                 });
                 if (error) {
@@ -744,7 +848,7 @@
                     password,
                     options: {
                         data: { name, address: full, postcode },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=20"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=21"
                     }
                 });
                 if (error) {
@@ -770,36 +874,44 @@
                 if (sessionUser) await loadProfile();
                 else paintWho();
                 const query = new URLSearchParams(window.location.search);
-                const sessionId = query.get("session_id");
+                const sessionId = query.get("session_id") || "";
                 const paidFlag = query.get("paid");
                 if (paidFlag === "0") cameBack = true;
-                if (sessionId && sessionUser && sb()) {
-                    const paid = await payCall({ action: "confirm", session_id: sessionId });
-                    if (paid && paid.ok && paid.saved) {
-                        document.getElementById("bookedNote").textContent = "Paid. Booked for " + paid.slot + ".";
-                    } else if (paid && paid.ok) {
-                        const saved = await sb().from("orders").insert({
-                            user_id: sessionUser.id,
-                            name: paid.name || (profile && profile.name) || "",
-                            address: paid.address || (profile && profile.address) || "",
-                            slot: paid.slot,
-                            day: londonDate(),
-                            items: paid.items || [],
-                            total_pence: paid.total_pence,
-                            status: "new"
-                        });
-                        document.getElementById("bookedNote").textContent = saved.error
-                            ? "Paid, but the queue did not take it yet. Refresh the staff page in a moment."
-                            : "Paid. Booked for " + paid.slot + ".";
-                    } else {
-                        document.getElementById("bookedNote").textContent = "The card payment did not finish.";
+                if (paidFlag === "1" || sessionId.indexOf("cs_") === 0) {
+                    showOrder(null, "checking", false);
+                    if (!sessionUser) {
+                        await new Promise((resolve) => setTimeout(resolve, 900));
+                        const again = await db.auth.getSession();
+                        sessionUser = again.data.session && again.data.session.user;
+                        if (sessionUser) await loadProfile();
                     }
-                    history.replaceState({}, "", "/order.html?v=20");
-                } else if (sessionUser) {
-                    if (cameBack) document.getElementById("bookedNote").textContent = "No payment was taken. The time stays held until the 5 minute timer ends.";
-                    resumeHold(cameBack);
-                    if (cameBack) history.replaceState({}, "", "/order.html?v=20");
+                    if (!sessionUser) {
+                        showOrder(null, "login", false);
+                        return;
+                    }
+                    const paid = await payCall({ action: "confirm", session_id: sessionId });
+                    if (paid && paid.ok) {
+                        held = "";
+                        left = 0;
+                        clearInterval(holdClock);
+                        showOrder(paid, "paid", true);
+                    } else {
+                        showOrder(paid, "failed", false);
+                    }
+                    history.replaceState({}, "", "/order.html?v=21");
+                    return;
                 }
+                if (sessionUser) {
+                    if (cameBack) {
+                        document.getElementById("bookedNote").textContent = "No payment was taken. The time stays held until the 5 minute timer ends.";
+                        showOrder(null, "back", false);
+                        resumeHold(true);
+                        history.replaceState({}, "", "/order.html?v=21");
+                        return;
+                    }
+                    resumeHold(false);
+                }
+                restoreOrder();
             });
         }
         let ordersOpen = false;

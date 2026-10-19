@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
   }
   if (!items.length) return json({ error: "The basket is empty." });
   const total = items.reduce((sum, item) => sum + item.qty * item.pence, 0);
-  if (total < 30) return json({ error: "The card payment has to be at least 30p." });
+  if (total < 1500) return json({ error: "Minimum order is £15 to book a time." });
 
   const day = londonDate();
   await admin.from("orders").delete().eq("status", "unpaid").lt("created_at", new Date(Date.now() - 20 * 60 * 1000).toISOString());

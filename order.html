@@ -169,10 +169,10 @@
         <div class="chips">
             <span class="chip">Pickup</span>
             <span class="chip">16:30–19:00</span>
-            <span class="chip">15 min slots</span>
+            <span class="chip">£15 minimum</span>
         </div>
         <h1>Order for pickup</h1>
-        <p class="lead">Tap + to add. Then pick a pickup time. That time is taken straight away.</p>
+        <p class="lead">Tap + to add. The basket has to be at least £15 before a time can be booked. Then pick a pickup time. That time is taken straight away.</p>
         <div id="shop">
         <p class="lead" id="bookedNote"></p>
         <div class="layout">
@@ -188,7 +188,7 @@
         <div class="grab"></div>
         <p class="day">This evening</p>
         <h2>Pick a pickup</h2>
-        <p class="lead">Tap a free time. The card form stays on this page and the 5 minute timer keeps running. Test card 4242 4242 4242 4242, any future date, any three-digit code.</p>
+        <p class="lead">Tap a free time. The basket must be at least £15. The card form stays on this page and the 5 minute timer keeps running.</p>
         <div class="grid" id="slots"></div>
         <p class="hold" id="hold">Pick a time. It is held for 5 minutes while you pay. Coming back does not start the timer again.</p>
         <div id="totals"></div>
@@ -280,6 +280,7 @@
         let checkout = null;
         let cardSession = "";
         const money = (p) => "£" + (p / 100).toFixed(2);
+        const MIN_PENCE = 1500;
         function withKids(id, name) {
             const text = String(name || "");
             if (/kids/i.test(text)) return text;
@@ -559,16 +560,24 @@
             });
             if (!bits.length) return "<p class='empty'>Nothing in the basket yet.</p>";
             const food = foodPence();
-            return bits.join("") + "<div class='line'><strong>To pay</strong><strong>" + money(food) + "</strong></div>";
+            const short = Math.max(0, MIN_PENCE - food);
+            const bitsOut = bits.join("") + "<div class='line'><strong>To pay</strong><strong>" + money(food) + "</strong></div>";
+            if (short) return bitsOut + "<p class='empty'>Add " + money(short) + " more. £15 minimum to book a time.</p>";
+            return bitsOut;
         }
         function draw() {
             drawMenu();
-            document.getElementById("desk").innerHTML = "<h2>Basket</h2>" + lines() + "<button class='go' type='button' id='deskGo'" + (count() ? "" : " disabled") + ">" + (sessionUser ? "Choose a time" : "Login to book a slot") + "</button>";
+            const food = foodPence();
+            const short = Math.max(0, MIN_PENCE - food);
+            const ready = !short;
+            let goLabel = "Choose a time";
+            if (count() && short) goLabel = "Add " + money(short) + " more";
+            else if (count() && !sessionUser) goLabel = "Login to book a slot";
+            document.getElementById("desk").innerHTML = "<h2>Basket</h2>" + lines() + "<button class='go' type='button' id='deskGo'" + (count() && ready ? "" : " disabled") + ">" + goLabel + "</button>";
             const deskGo = document.getElementById("deskGo");
             if (deskGo) deskGo.onclick = openSheet;
             const bar = document.getElementById("bar");
-            const food = foodPence();
-            bar.textContent = !count() ? "Basket is empty" : (sessionUser ? ("Basket · " + count() + " · " + money(food)) : "Login to book a slot");
+            bar.textContent = !count() ? "Basket is empty" : (short ? ("Add " + money(short) + " to book a time") : (sessionUser ? ("Basket · " + count() + " · " + money(food)) : "Login to book a slot"));
             document.getElementById("totals").innerHTML = count() ? lines() : "";
             document.getElementById("pay").textContent = count() ? ("Book " + money(food)) : "Add food first";
             document.getElementById("pay").disabled = !count() || !held;
@@ -697,6 +706,10 @@
         }
         async function takeSlot(slot) {
             if (!ordersOpen || booking || !sessionUser) return;
+            if (foodPence() < MIN_PENCE) {
+                document.getElementById("hold").textContent = "Minimum order is £15 to book a time. Add more food first.";
+                return;
+            }
             if (taken.has(slot) && !(held === slot && left > 0)) return;
             const db = sb();
             if (!db) return;
@@ -735,7 +748,7 @@
                 askAuth("Log in or sign up to book a time.");
                 return;
             }
-            if (!count()) return;
+            if (!count() || foodPence() < MIN_PENCE) return;
             loadTaken().finally(() => {
                 document.getElementById("bg").classList.add("open");
                 document.getElementById("sheet").classList.add("open");
@@ -943,7 +956,7 @@
                     email: email,
                     options: {
                         shouldCreateUser: false,
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=23"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=24"
                     }
                 });
                 if (error) {
@@ -993,7 +1006,7 @@
                     password,
                     options: {
                         data: { name, address: full, postcode },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=23"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=24"
                     }
                 });
                 if (error) {
@@ -1047,7 +1060,7 @@
                     } else {
                         showOrder(paid, "failed", false);
                     }
-                    history.replaceState({}, "", "/order.html?v=23");
+                    history.replaceState({}, "", "/order.html?v=24");
                     return;
                 }
                 if (sessionUser) {
@@ -1055,7 +1068,7 @@
                         document.getElementById("bookedNote").textContent = "No payment was taken. The time stays held until the 5 minute timer ends.";
                         showOrder(null, "back", false);
                         resumeHold(true);
-                        history.replaceState({}, "", "/order.html?v=23");
+                        history.replaceState({}, "", "/order.html?v=24");
                         return;
                     }
                     resumeHold(false);

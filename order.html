@@ -252,10 +252,10 @@
             ["roll","Other meals","Buttered roll","",85,""],
             ["pineapple","Other meals","Pineapple fritter","",135,""],
             ["mars","Other meals","Battered Mars bar","",150,""],
-            ["kidssausage","Kids","Sausage, chips & a drink","",400,"images/Sausage & Chips.jpg"],
-            ["kidsfishcake","Kids","Fishcake, chips & a drink","",400,"images/Jumbo Fish Cake & Chips.jpg"],
-            ["kidsnug","Kids","4 chicken nuggets, chips & a drink","",400,"images/Chicken Nuggets & Chips.jpg"],
-            ["kidscod","Kids","4 cod bits, chips & a drink","",500,"images/Kids Cod bites & Chips.jpg"],
+            ["kidssausage","Kids","Kids sausage, chips & a drink","",400,"images/Sausage & Chips.jpg"],
+            ["kidsfishcake","Kids","Kids fishcake, chips & a drink","",400,"images/Jumbo Fish Cake & Chips.jpg"],
+            ["kidsnug","Kids","Kids 4 chicken nuggets, chips & a drink","",400,"images/Chicken Nuggets & Chips.jpg"],
+            ["kidscod","Kids","Kids 4 cod bits, chips & a drink","",500,"images/Kids Cod bites & Chips.jpg"],
             ["kidscodfish","Kids","Kids cod, chips & a drink","",500,"images/Large Cod & Chips & Mushy Peas.jpg"]
         ];
         const CANS = [
@@ -280,6 +280,15 @@
         let checkout = null;
         let cardSession = "";
         const money = (p) => "£" + (p / 100).toFixed(2);
+        function withKids(id, name) {
+            const text = String(name || "");
+            if (/kids/i.test(text)) return text;
+            const kidsId = String(id || "").indexOf("kids") === 0;
+            if (kidsId || /^(Sausage|Fishcake|4 chicken nuggets|4 cod bits), chips & /i.test(text)) {
+                return "Kids " + text.charAt(0).toLowerCase() + text.slice(1);
+            }
+            return text;
+        }
         function lookup(id) {
             const food = FOOD.find((row) => row[0] === id);
             if (food) return { name: food[2], pence: food[4] };
@@ -312,7 +321,7 @@
                     if (!item || typeof item.name !== "string" || id.length > 80) return;
                     const pence = Math.round(Number(item.pence));
                     if (!pence || pence < 1) return;
-                    extras[id] = { name: item.name.slice(0, 80), pence: pence };
+                    extras[id] = { name: withKids(id, item.name.slice(0, 80)), pence: pence };
                 });
                 const items = saved && saved.basket && typeof saved.basket === "object" ? saved.basket : {};
                 Object.keys(items).forEach((id) => {
@@ -539,7 +548,7 @@
             const bits = [];
             Object.entries(basket).forEach(([id, n]) => {
                 const item = lookup(id);
-                bits.push("<div class='line'><span>" + n + " × " + item.name + "</span><span>" + money(n * item.pence) + "</span></div>");
+                bits.push("<div class='line'><span>" + n + " × " + withKids(id, item.name) + "</span><span>" + money(n * item.pence) + "</span></div>");
             });
             if (!bits.length) return "<p class='empty'>Nothing in the basket yet.</p>";
             const food = foodPence();
@@ -859,7 +868,7 @@
                 const row = document.createElement("div");
                 row.className = "line";
                 const left = document.createElement("span");
-                left.textContent = item.qty + " × " + item.name;
+                left.textContent = item.qty + " × " + withKids("", item.name);
                 const right = document.createElement("span");
                 right.textContent = money((item.qty || 1) * (item.pence || 0));
                 row.append(left, right);

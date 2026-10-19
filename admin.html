@@ -89,9 +89,17 @@
             if (!db) db = window.supabase.createClient(cfg.url, cfg.anonKey);
             return db;
         }
+        function withKids(name) {
+            const text = String(name || "");
+            if (/kids/i.test(text)) return text;
+            if (/^(Sausage|Fishcake|4 chicken nuggets|4 cod bits), chips & /i.test(text)) {
+                return "Kids " + text.charAt(0).toLowerCase() + text.slice(1);
+            }
+            return text;
+        }
         function itemsOf(order) {
             const items = Array.isArray(order.items) ? order.items : [];
-            return items.map((item) => esc(item.qty) + " × " + esc(item.name)).join("<br>");
+            return items.map((item) => esc(item.qty) + " × " + esc(withKids(item.name))).join("<br>");
         }
         function paintSwitch(open) {
             const card = document.getElementById("switchCard");

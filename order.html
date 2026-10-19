@@ -162,7 +162,7 @@
         <div class="chip-list" id="chipChoices"></div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="order-config.js?v=2"></script>
+    <script src="order-config.js?v=4"></script>
     <script>
         const FOOD = [
             ["codmeal","Fish","Large cod, med chips & mushy peas","",1140,"images/Large Cod & Chips & Mushy Peas.jpg"],
@@ -478,6 +478,20 @@
             });
         }
         let slotPoll = 0;
+        async function payCall(body) {
+            const cfg = window.ORDER_CONFIG || {};
+            const db = sb();
+            const session = db ? (await db.auth.getSession()).data.session : null;
+            const res = await fetch(cfg.payUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: "Bearer " + (session ? session.access_token : "")
+                },
+                body: JSON.stringify(body)
+            });
+            return res.json();
+        }
         async function takeSlot(slot) {
             if (taken.has(slot) || booking || !sessionUser) return;
             const db = sb();
@@ -485,9 +499,9 @@
             booking = true;
             document.getElementById("hold").textContent = "Opening the card payment...";
             const items = Object.entries(basket).map(([id, n]) => ({ id, qty: n }));
-            const { data, error } = await db.functions.invoke("pay", { body: { action: "create", slot, items } });
+            const data = await payCall({ action: "create", slot, items });
             booking = false;
-            if (error || !data || data.error || !data.url) {
+            if (!data || data.error || !data.url) {
                 document.getElementById("hold").textContent = (data && data.error) || "Card payment is not switched on yet.";
                 await loadTaken();
                 drawSlots();
@@ -568,6 +582,13 @@
             if (!db) return;
             const { data } = await db.rpc("booked_slots", { for_day: londonDate() });
             (data || []).forEach((row) => taken.add(row.slot));
+            const cfg = window.ORDER_CONFIG || {};
+            if (cfg.payUrl) {
+                try {
+                    const extra = await payCall({ action: "slots" });
+                    (extra.slots || []).forEach((slot) => taken.add(slot));
+                } catch (err) {}
+            }
         }
         async function afterLogin() {
             await loadProfile();
@@ -615,7 +636,7 @@
                     password,
                     options: {
                         data: { name, address: full, postcode },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=8"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=13"
                     }
                 });
                 if (error) {
@@ -642,11 +663,22 @@
                 else paintWho();
                 const sessionId = new URLSearchParams(window.location.search).get("session_id");
                 if (sessionId && sessionUser && sb()) {
-                    const paid = await sb().functions.invoke("pay", { body: { action: "confirm", session_id: sessionId } });
-                    const slot = paid.data && paid.data.slot;
-                    document.getElementById("bookedNote").textContent = paid.data && paid.data.ok
-                        ? ("Paid. Booked for " + slot + ".")
-                        : "The card payment did not finish.";
+                    const paid = await payCall({ action: "confirm", session_id: sessionId });
+                    if (paid && paid.ok) {
+                        await sb().from("orders").insert({
+                            user_id: sessionUser.id,
+                            name: paid.name || (profile && profile.name) || "",
+                            address: paid.address || (profile && profile.address) || "",
+                            slot: paid.slot,
+                            day: londonDate(),
+                            items: paid.items || [],
+                            total_pence: paid.total_pence,
+                            status: "new"
+                        });
+                        document.getElementById("bookedNote").textContent = "Paid. Booked for " + paid.slot + ".";
+                    } else {
+                        document.getElementById("bookedNote").textContent = "The card payment did not finish.";
+                    }
                 }
             });
         }

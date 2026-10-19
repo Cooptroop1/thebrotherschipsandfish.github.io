@@ -111,7 +111,7 @@
             <span style="display:flex;gap:14px;align-items:center">
                 <span id="who"></span>
                 <button id="logout" type="button" hidden style="background:transparent;color:#e8c96a;border:0;font:inherit;font-weight:700;cursor:pointer">Log out</button>
-                <a class="back" id="staffLink" href="/admin.html?v=21" hidden>Staff</a>
+                <a class="back" id="staffLink" href="/admin.html?v=22" hidden>Staff</a>
                 <a class="back" href="/">Back to the van</a>
             </span>
         </div>
@@ -153,6 +153,7 @@
             <p id="confirmedExtra"></p>
             <button class="mini" id="confirmedClose" type="button" style="margin-top:10px">Back to the menu</button>
         </div>
+        <div id="closedBox">
             <h1>Orders are closed</h1>
             <p class="lead">Pickup orders are switched off for now. Log in or sign up above so you are ready when they are switched on.</p>
         </div>
@@ -798,7 +799,7 @@
                     email: email,
                     options: {
                         shouldCreateUser: false,
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=21"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=22"
                     }
                 });
                 if (error) {
@@ -848,7 +849,7 @@
                     password,
                     options: {
                         data: { name, address: full, postcode },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=21"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=22"
                     }
                 });
                 if (error) {
@@ -898,7 +899,7 @@
                     } else {
                         showOrder(paid, "failed", false);
                     }
-                    history.replaceState({}, "", "/order.html?v=21");
+                    history.replaceState({}, "", "/order.html?v=22");
                     return;
                 }
                 if (sessionUser) {
@@ -906,7 +907,7 @@
                         document.getElementById("bookedNote").textContent = "No payment was taken. The time stays held until the 5 minute timer ends.";
                         showOrder(null, "back", false);
                         resumeHold(true);
-                        history.replaceState({}, "", "/order.html?v=21");
+                        history.replaceState({}, "", "/order.html?v=22");
                         return;
                     }
                     resumeHold(false);
@@ -1007,10 +1008,10 @@
             }
         };
         document.getElementById("pay").hidden = true;
+        bootAuth();
         draw();
         paintShop();
         paintWho();
-        bootAuth();
         loadShopFlag();
         setInterval(loadShopFlag, 20000);
     </script>

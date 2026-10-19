@@ -97,7 +97,7 @@
             <span style="display:flex;gap:14px;align-items:center">
                 <span id="who"></span>
                 <button id="logout" type="button" hidden style="background:transparent;color:#e8c96a;border:0;font:inherit;font-weight:700;cursor:pointer">Log out</button>
-                <a class="back" href="/admin.html">Staff</a>
+                <a class="back" id="staffLink" href="/admin.html" hidden>Staff</a>
                 <a class="back" href="/">Back to the van</a>
             </span>
         </div>
@@ -539,6 +539,7 @@
             document.getElementById("gate").hidden = on;
             document.getElementById("shop").hidden = !on;
             document.getElementById("logout").hidden = !on;
+            document.getElementById("staffLink").hidden = !on || String(sessionUser.email || "").toLowerCase() !== "jcooper4888@aol.co.uk";
             const bar = document.getElementById("bar");
             if (!on) bar.style.display = "none";
             else bar.style.removeProperty("display");

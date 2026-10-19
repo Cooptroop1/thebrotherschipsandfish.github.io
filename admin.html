@@ -83,7 +83,7 @@
                 document.getElementById("note").textContent = "Could not load the queue.";
                 return;
             }
-            const rows = (data || []).slice().sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
+            const rows = (data || []).filter((order) => order.status !== "unpaid").slice().sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
             const list = document.getElementById("list");
             list.innerHTML = "";
             if (!rows.length) {

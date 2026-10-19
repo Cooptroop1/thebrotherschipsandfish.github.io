@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Orders | The Brothers Chips and Fish</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --ink:#120e0b; --gold:#c9a227; --paper:#f4ead8; --card:#1c1713; --line:rgba(201,162,39,.28); --muted:#b9a894; }
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { font-family:"Source Sans 3",system-ui,sans-serif; background:var(--ink); color:var(--paper); }
+        a { color:#e8c96a; }
+        .wrap { width:min(860px, calc(100% - 24px)); margin:0 auto; padding:18px 0 40px; }
+        h1 { font-family:Fraunces,serif; font-size:2rem; }
+        .lead { color:var(--muted); margin:6px 0 16px; }
+        label { display:block; font-weight:700; margin:10px 0 4px; }
+        input { width:100%; max-width:420px; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:12px; font:inherit; }
+        button { border:0; border-radius:999px; background:var(--gold); color:var(--ink); font:inherit; font-weight:700; padding:10px 14px; cursor:pointer; }
+        .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; margin:10px 0; }
+        .card h2 { font-family:Fraunces,serif; font-size:1.4rem; }
+        .slot { color:var(--gold); font-weight:700; letter-spacing:.08em; }
+        .muted { color:var(--muted); }
+        .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+        .done { opacity:.55; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <p><a href="/order.html?v=7">Back to the menu</a></p>
+        <h1>Today's queue</h1>
+        <p class="lead" id="note">Log in with the staff email.</p>
+        <div id="login">
+            <label for="email">Email</label>
+            <input id="email" type="email" autocomplete="username">
+            <label for="pass">Password</label>
+            <input id="pass" type="password" autocomplete="current-password">
+            <p style="margin-top:12px"><button id="go" type="button">Log in</button></p>
+        </div>
+        <div id="list"></div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="order-config.js"></script>
+    <script>
+        const SLOTS = ["4:30","4:45","5:00","5:15","5:30","5:45","6:00","6:15","6:30","6:45","7:00"];
+        const NEXT = { "new": "cooking", "cooking": "ready", "ready": "collected" };
+        const LABEL = { "new": "Start it", "cooking": "Ready", "ready": "Collected" };
+        let db = null;
+        let timer = 0;
+        function londonDate() {
+            return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
+        }
+        function esc(value) {
+            return String(value == null ? "" : value).replace(/[&<>"]/g, (ch) => ({ "&": "&", "<": "<", ">": ">", '"': """ }[ch]));
+        }
+        function money(pence) { return "£" + (pence / 100).toFixed(2); }
+        function client() {
+            const cfg = window.ORDER_CONFIG || {};
+            if (!cfg.url || !cfg.anonKey || !window.supabase) return null;
+            if (!db) db = window.supabase.createClient(cfg.url, cfg.anonKey);
+            return db;
+        }
+        function itemsOf(order) {
+            const items = Array.isArray(order.items) ? order.items : [];
+            return items.map((item) => esc(item.qty) + " × " + esc(item.name)).join("<br>");
+        }
+        async function loadOrders() {
+            const sb = client();
+            const { data, error } = await sb.from("orders").select("id,name,address,slot,items,total_pence,status,created_at").eq("day", londonDate()).order("created_at");
+            if (error) {
+                document.getElementById("note").textContent = "Could not load the queue.";
+                return;
+            }
+            const rows = (data || []).slice().sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
+            const list = document.getElementById("list");
+            list.innerHTML = "";
+            if (!rows.length) {
+                list.innerHTML = "<p class='lead'>No orders yet today.</p>";
+                return;
+            }
+            rows.forEach((order) => {
+                const card = document.createElement("article");
+                card.className = "card" + (order.status === "collected" || order.status === "cancelled" ? " done" : "");
+                card.innerHTML = "<p class='slot'>" + esc(order.slot) + " · " + esc(order.status) + "</p><h2>" + esc(order.name) + "</h2><p>" + esc(order.address) + "</p><p style='margin-top:8px'>" + itemsOf(order) + "</p><p class='muted'>" + money(order.total_pence) + "</p>";
+                const actions = document.createElement("div");
+                actions.className = "actions";
+                if (NEXT[order.status]) {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.textContent = LABEL[order.status];
+                    button.onclick = () => setStatus(order.id, NEXT[order.status]);
+                    actions.appendChild(button);
+                }
+                if (order.status !== "cancelled" && order.status !== "collected") {
+                    const cancel = document.createElement("button");
+                    cancel.type = "button";
+                    cancel.textContent = "Cancel";
+                    cancel.onclick = () => setStatus(order.id, "cancelled");
+                    actions.appendChild(cancel);
+                }
+                card.appendChild(actions);
+                list.appendChild(card);
+            });
+        }
+        async function setStatus(id, status) {
+            await client().from("orders").update({ status }).eq("id", id);
+            loadOrders();
+        }
+        async function showQueue() {
+            document.getElementById("login").style.display = "none";
+            const { data } = await client().from("profiles").select("is_admin,name").eq("id", (await client().auth.getSession()).data.session.user.id).maybeSingle();
+            if (!data || !data.is_admin) {
+                document.getElementById("note").textContent = "This login is not staff.";
+                return;
+            }
+            document.getElementById("note").textContent = "Live for " + londonDate() + ". New orders show here.";
+            await loadOrders();
+            clearInterval(timer);
+            timer = setInterval(loadOrders, 8000);
+            client().channel("queue").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, loadOrders).subscribe();
+        }
+        document.getElementById("go").onclick = async () => {
+            const sb = client();
+            if (!sb) {
+                document.getElementById("note").textContent = "Login is not switched on yet.";
+                return;
+            }
+            const { error } = await sb.auth.signInWithPassword({
+                email: document.getElementById("email").value.trim(),
+                password: document.getElementById("pass").value
+            });
+            if (error) {
+                document.getElementById("note").textContent = error.message;
+                return;
+            }
+            showQueue();
+        };
+        const ready = client();
+        if (ready) {
+            ready.auth.getSession().then(({ data }) => {
+                if (data.session) showQueue();
+            });
+        }
+    </script>
+</body>
+</html>

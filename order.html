@@ -158,7 +158,7 @@
             <p id="confirmedWho" class="lead"></p>
             <div id="confirmedList"></div>
             <p id="confirmedExtra"></p>
-            <button class="mini" id="confirmedClose" type="button" style="margin-top:10px">Back to the menu</button>
+            <button class="mini" id="confirmedClose" type="button" style="margin-top:10px">Close order done</button>
         </div>
         <p id="holdBar" class="holdbar" hidden></p>
         <div id="closedBox">
@@ -168,7 +168,7 @@
         <div id="openShop" hidden>
         <div class="chips">
             <span class="chip">Pickup</span>
-            <span class="chip">4:30–7:00</span>
+            <span class="chip">16:30–19:00</span>
             <span class="chip">15 min slots</span>
         </div>
         <h1>Order for pickup</h1>
@@ -269,6 +269,8 @@
             ["shootblack","Fruit Shoot blackcurrant",130]
         ];
         const SLOTS = ["4:30","4:45","5:00","5:15","5:30","5:45","6:00","6:15","6:30","6:45","7:00"];
+        const CLOCK = {"4:30":"16:30","4:45":"16:45","5:00":"17:00","5:15":"17:15","5:30":"17:30","5:45":"17:45","6:00":"18:00","6:15":"18:15","6:30":"18:30","6:45":"18:45","7:00":"19:00"};
+        function clock(slot) { return CLOCK[slot] || slot || ""; }
         const basket = {};
         const extras = {};
         let held = "";
@@ -567,7 +569,7 @@
                 btn.className = "slot" + (mine ? " on" : "") + (gone ? " taken" : "");
                 const mins = mine ? Math.floor(left / 60) : 0;
                 const secs = mine ? left % 60 : 0;
-                btn.innerHTML = slot + "<small>" + (gone ? "Taken" : mine ? ("Held " + mins + ":" + String(secs).padStart(2, "0")) : "Free") + "</small>";
+                btn.innerHTML = clock(slot) + "<small>" + (gone ? "Taken" : mine ? ("Held " + mins + ":" + String(secs).padStart(2, "0")) : "Free") + "</small>";
                 if (!gone) btn.onclick = () => takeSlot(slot);
                 root.appendChild(btn);
             });
@@ -605,7 +607,7 @@
                 }
                 const mins = Math.floor(left / 60);
                 const secs = String(left % 60).padStart(2, "0");
-                const line = held + " is held for " + mins + ":" + secs + ". Add food if you need to, then press that time again. The timer does not start over.";
+                const line = clock(held) + " is held for " + mins + ":" + secs + ". Add food if you need to, then press that time again. The timer does not start over.";
                 if (note) note.textContent = line;
                 const barHold = document.getElementById("holdBar");
                 if (barHold) {
@@ -743,7 +745,7 @@
             if (note && held && left > 0) {
                 const mins = Math.floor(left / 60);
                 const secs = String(left % 60).padStart(2, "0");
-                note.textContent = held + " is still held for " + mins + ":" + secs + ". Add food, then press that time again. The timer does not start over.";
+                note.textContent = clock(held) + " is still held for " + mins + ":" + secs + ". Add food, then press that time again. The timer does not start over.";
             }
         };
         function londonDate() {
@@ -851,8 +853,8 @@
                 return;
             }
             kicker.textContent = "Order confirmed";
-            title.textContent = "Pickup at " + (paid.slot || "");
-            body.textContent = "Paid. We'll have this ready for " + (paid.slot || "your time") + ".";
+            title.textContent = "Pickup at " + clock(paid.slot || "");
+            body.textContent = "Paid. We'll have this ready for " + (paid.slot ? clock(paid.slot) : "your time") + ".";
             (paid.items || []).forEach((item) => {
                 const row = document.createElement("div");
                 row.className = "line";
@@ -874,7 +876,7 @@
             if (paid.name) who.textContent = paid.name + (paid.address ? " · " + paid.address : "");
             extra.textContent = paid.saved === false
                 ? "Paid. If it is not on the staff list in a minute, tell us when you collect."
-                : "It's on the list for " + paid.slot + ".";
+                : "";
             if (remember) {
                 try {
                     sessionStorage.setItem("brothers-order", JSON.stringify({

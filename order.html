@@ -149,7 +149,7 @@
         <div class="grab"></div>
         <p class="day">This evening</p>
         <h2>Pick a pickup</h2>
-        <p class="lead">Tap a free time. Nobody else can take it after you do.</p>
+        <p class="lead">Tap a free time. You then pay by card. Test card 4242 4242 4242 4242, any future date, any three-digit code.</p>
         <div class="grid" id="slots"></div>
         <p class="hold" id="hold">Pick a time. It is held for 5 minutes, then it frees if you do not finish.</p>
         <div id="totals"></div>
@@ -483,34 +483,17 @@
             const db = sb();
             if (!db) return;
             booking = true;
-            const items = Object.entries(basket).map(([id, n]) => {
-                const item = lookup(id);
-                return { name: item.name, qty: n, pence: item.pence };
-            });
-            const { error } = await db.from("orders").insert({
-                user_id: sessionUser.id,
-                name: (profile && profile.name) || "",
-                address: (profile && profile.address) || "",
-                slot: slot,
-                day: londonDate(),
-                items: items,
-                total_pence: foodPence(),
-                status: "new"
-            });
+            document.getElementById("hold").textContent = "Opening the card payment...";
+            const items = Object.entries(basket).map(([id, n]) => ({ id, qty: n }));
+            const { data, error } = await db.functions.invoke("pay", { body: { action: "create", slot, items } });
             booking = false;
-            if (error) {
-                document.getElementById("hold").textContent = error.code === "23505" ? "That time has just gone. Pick another." : "Could not take that time. Try again.";
+            if (error || !data || data.error || !data.url) {
+                document.getElementById("hold").textContent = (data && data.error) || "Card payment is not switched on yet.";
                 await loadTaken();
                 drawSlots();
                 return;
             }
-            Object.keys(basket).forEach((id) => delete basket[id]);
-            held = "";
-            clearInterval(timer);
-            document.getElementById("bookedNote").textContent = "Booked for " + slot + ". Nothing has been charged yet.";
-            document.getElementById("hold").textContent = "Booked for " + slot + ".";
-            closeSheet();
-            draw();
+            window.location.href = data.url;
         }
         function openSheet() {
             if (!sessionUser) {
@@ -653,10 +636,18 @@
                 paintWho();
                 return;
             }
-            db.auth.getSession().then(({ data }) => {
+            db.auth.getSession().then(async ({ data }) => {
                 sessionUser = data.session && data.session.user;
-                if (sessionUser) loadProfile();
+                if (sessionUser) await loadProfile();
                 else paintWho();
+                const sessionId = new URLSearchParams(window.location.search).get("session_id");
+                if (sessionId && sessionUser && sb()) {
+                    const paid = await sb().functions.invoke("pay", { body: { action: "confirm", session_id: sessionId } });
+                    const slot = paid.data && paid.data.slot;
+                    document.getElementById("bookedNote").textContent = paid.data && paid.data.ok
+                        ? ("Paid. Booked for " + slot + ".")
+                        : "The card payment did not finish.";
+                }
             });
         }
         document.getElementById("pay").hidden = true;

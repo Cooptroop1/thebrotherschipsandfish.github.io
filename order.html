@@ -115,7 +115,7 @@
             <span style="display:flex;gap:14px;align-items:center">
                 <span id="who"></span>
                 <button id="logout" type="button" hidden style="background:transparent;color:#e8c96a;border:0;font:inherit;font-weight:700;cursor:pointer">Log out</button>
-                <a class="back" id="staffLink" href="/admin.html?v=27" hidden>Staff</a>
+                <a class="back" id="staffLink" href="/admin.html?v=28" hidden>Staff</a>
                 <a class="back" href="/">Back to the van</a>
             </span>
         </div>
@@ -183,6 +183,7 @@
         <p class="day">This evening</p>
         <h2>Pick a pickup</h2>
         <p class="lead">Tap a free time. The basket must be at least £15. The card form stays on this page and the 5 minute timer keeps running.</p>
+        <p class="lead" id="ukClock">UK time</p>
         <div class="grid" id="slots"></div>
         <p class="hold" id="hold">Pick a time. It is held for 5 minutes while you pay. Coming back does not start the timer again.</p>
         <div id="totals"></div>
@@ -266,6 +267,24 @@
         const HALF = ["4:30","5:00","5:30","6:00","6:30","7:00"];
         const CLOCK = {"4:30":"16:30","4:45":"16:45","5:00":"17:00","5:15":"17:15","5:30":"17:30","5:45":"17:45","6:00":"18:00","6:15":"18:15","6:30":"18:30","6:45":"18:45","7:00":"19:00"};
         function clock(slot) { return CLOCK[slot] || slot || ""; }
+        let clockSkew = 0;
+        function londonMinutes() {
+            const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date());
+            let hour = 0;
+            let minute = 0;
+            parts.forEach((part) => {
+                if (part.type === "hour") hour = Number(part.value);
+                if (part.type === "minute") minute = Number(part.value);
+            });
+            if (hour === 24) hour = 0;
+            return hour * 60 + minute;
+        }
+        function ukMinutes() { return (londonMinutes() + clockSkew + 1440) % 1440; }
+        function slotMinutes(slot) {
+            const bits = String(slot).split(":");
+            return (Number(bits[0]) + 12) * 60 + Number(bits[1]);
+        }
+        function slotPassed(slot) { return ukMinutes() >= slotMinutes(slot); }
         const basket = {};
         const extras = {};
         let held = "";
@@ -585,14 +604,19 @@
                 const btn = document.createElement("button");
                 btn.type = "button";
                 const mine = held === slot && left > 0;
+                const passed = slotPassed(slot) && !mine;
                 const gone = taken.has(slot) && !mine;
-                btn.className = "slot" + (mine ? " on" : "") + (gone ? " taken" : "");
+                btn.className = "slot" + (mine ? " on" : "") + ((passed || gone) ? " taken" : "");
                 const mins = mine ? Math.floor(left / 60) : 0;
                 const secs = mine ? left % 60 : 0;
-                btn.innerHTML = clock(slot) + "<small>" + (gone ? "Taken" : mine ? ("Held " + mins + ":" + String(secs).padStart(2, "0")) : "Free") + "</small>";
-                if (!gone) btn.onclick = () => takeSlot(slot);
+                btn.innerHTML = clock(slot) + "<small>" + (passed ? "Gone" : gone ? "Taken" : mine ? ("Held " + mins + ":" + String(secs).padStart(2, "0")) : "Free") + "</small>";
+                if (!passed && !gone) btn.onclick = () => takeSlot(slot);
                 root.appendChild(btn);
             });
+            const note = document.getElementById("hold");
+            if (note && !(held && left > 0) && !shownSlots().some((slot) => !slotPassed(slot))) {
+                note.textContent = "Tonight's times have all gone.";
+            }
         }
         let slotPoll = 0;
         async function payCall(body) {
@@ -702,6 +726,11 @@
             if (!ordersOpen || booking || !sessionUser) return;
             if (shownSlots().indexOf(slot) === -1) {
                 document.getElementById("hold").textContent = "That time is not on tonight.";
+                return;
+            }
+            if (slotPassed(slot) && !(held === slot && left > 0)) {
+                document.getElementById("hold").textContent = "That time has already gone. Pick a later one.";
+                drawSlots();
                 return;
             }
             if (foodPence() < MIN_PENCE) {
@@ -832,6 +861,9 @@
                 try {
                     const extra = await payCall({ action: "slots" });
                     (extra.slots || []).forEach((slot) => taken.add(slot));
+                    if (typeof extra.minutes === "number" && extra.minutes >= 0 && extra.minutes < 1440) {
+                        clockSkew = extra.minutes - londonMinutes();
+                    }
                     if (extra.half === true || extra.half === false) {
                         if (extra.half !== halfHour) {
                             halfHour = extra.half;
@@ -958,7 +990,7 @@
                     email: email,
                     options: {
                         shouldCreateUser: false,
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=27"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=28"
                     }
                 });
                 if (error) {
@@ -1008,7 +1040,7 @@
                     password,
                     options: {
                         data: { name, address: full, postcode },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=27"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=28"
                     }
                 });
                 if (error) {
@@ -1062,14 +1094,14 @@
                     } else {
                         showOrder(paid, "failed", false);
                     }
-                    history.replaceState({}, "", "/order.html?v=27");
+                    history.replaceState({}, "", "/order.html?v=28");
                     return;
                 }
                 if (sessionUser) {
                     if (cameBack) {
                         document.getElementById("bookedNote").textContent = "No payment was taken. The time stays held. Add what you want, then press the button when you are ready.";
                         resumeHold(false);
-                        history.replaceState({}, "", "/order.html?v=27");
+                        history.replaceState({}, "", "/order.html?v=28");
                         return;
                     }
                     resumeHold(false);
@@ -1120,6 +1152,20 @@
         paintWho();
         loadShopFlag();
         setInterval(loadShopFlag, 20000);
+        let shownMinute = -1;
+        setInterval(() => {
+            const mins = ukMinutes();
+            const clockBox = document.getElementById("ukClock");
+            if (clockBox) {
+                const hour = String(Math.floor(mins / 60)).padStart(2, "0");
+                const minute = String(mins % 60).padStart(2, "0");
+                clockBox.textContent = "UK time " + hour + ":" + minute + ". A time that has gone cannot be picked.";
+            }
+            if (mins !== shownMinute) {
+                shownMinute = mins;
+                drawSlots();
+            }
+        }, 1000);
     </script>
 </body>
 </html>

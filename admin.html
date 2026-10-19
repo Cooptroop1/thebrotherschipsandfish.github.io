@@ -36,7 +36,7 @@
 </head>
 <body>
     <div class="wrap">
-        <p><a href="/order.html?v=17">Back to the menu</a></p>
+        <p><a href="/order.html?v=18">Back to the menu</a></p>
         <h1>Today's queue</h1>
         <p class="lead" id="note" style="color:#e8c96a;font-size:1.15rem">Log in with the staff email.</p>
         <div id="login">
@@ -58,6 +58,7 @@
             </div>
         </div>
         <div id="list"></div>
+        <p id="clearRow" hidden style="margin:14px 0"><button id="clearDay" type="button">Cancel all and clear the board</button></p>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="order-config.js?v=4"></script>
@@ -117,6 +118,34 @@
                 document.getElementById("switchNote").textContent = "Could not check if orders are open.";
             }
         }
+        async function saveStatus(id, status, slot) {
+            const patch = { status: status };
+            if (status === "cancelled" && SLOTS.indexOf(slot) !== -1) {
+                patch.slot = "off-" + slot + "-" + Date.now() + "-" + String(id).replace(/-/g, "").slice(0, 8);
+            }
+            const { error } = await client().from("orders").update(patch).eq("id", id);
+            return error;
+        }
+        function clearedTime(order) {
+            const match = /^off-(\d{1,2}:\d{2})-(\d+)/.exec(order.slot || "");
+            if (match) return { time: match[1], at: Number(match[2]) };
+            if (order.status === "cancelled" && SLOTS.indexOf(order.slot) !== -1) return { time: order.slot, at: Date.now() };
+            return null;
+        }
+        async function freeStuck(orders) {
+            const sb = client();
+            const jobs = [];
+            orders.forEach((order) => {
+                if (order.status !== "cancelled" || SLOTS.indexOf(order.slot) === -1) return;
+                const next = "off-" + order.slot + "-" + Date.now() + "-" + String(order.id).replace(/-/g, "").slice(0, 8);
+                const previous = order.slot;
+                order.slot = next;
+                jobs.push(sb.from("orders").update({ slot: next }).eq("id", order.id).then((result) => {
+                    if (result.error) order.slot = previous;
+                }));
+            });
+            await Promise.all(jobs);
+        }
         async function loadOrders() {
             const sb = client();
             const { data, error } = await sb.from("orders").select("id,name,address,slot,items,total_pence,status,created_at").eq("day", londonDate()).order("created_at");
@@ -124,7 +153,15 @@
                 document.getElementById("note").textContent = "Could not load the queue.";
                 return;
             }
-            const rows = (data || []).filter((order) => order.status !== "unpaid" && order.slot !== "ORDERS-OPEN");
+            const today = data || [];
+            await freeStuck(today);
+            const rows = today.filter((order) => order.status !== "unpaid" && order.status !== "cancelled" && order.slot !== "ORDERS-OPEN");
+            const cleared = {};
+            today.forEach((order) => {
+                const mark = clearedTime(order);
+                if (!mark) return;
+                cleared[mark.time] = Math.max(cleared[mark.time] || 0, mark.at);
+            });
             try {
                 const session = (await sb.auth.getSession()).data.session;
                 const cfg = window.ORDER_CONFIG || {};
@@ -136,19 +173,27 @@
                     });
                     const extra = await res.json();
                     const have = new Set(rows.map((order) => order.slot));
-                    (extra.orders || []).forEach((order) => { if (!have.has(order.slot)) rows.push(order); });
+                    const newest = {};
+                    (extra.orders || []).forEach((order) => {
+                        if (!order || have.has(order.slot) || SLOTS.indexOf(order.slot) === -1) return;
+                        const at = new Date(order.created_at).getTime();
+                        if (cleared[order.slot] && at <= cleared[order.slot]) return;
+                        const prev = newest[order.slot];
+                        if (!prev || at > new Date(prev.created_at).getTime()) newest[order.slot] = order;
+                    });
+                    Object.keys(newest).forEach((slot) => rows.push(newest[slot]));
                 }
             } catch (err) {}
             rows.sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
             const list = document.getElementById("list");
             list.innerHTML = "";
             if (!rows.length) {
-                list.innerHTML = "<p class='lead'>No orders yet today.</p>";
+                list.innerHTML = "<p class='lead'>No live orders. Cancelled times are free for a new booking.</p>";
                 return;
             }
             rows.forEach((order) => {
                 const card = document.createElement("article");
-                card.className = "card" + (order.status === "collected" || order.status === "cancelled" ? " done" : "");
+                card.className = "card" + (order.status === "collected" ? " done" : "");
                 card.innerHTML = "<div class='split'><div><p class='slot'>" + esc(order.slot) + "</p><p class='muted'>" + esc(order.status) + "</p><p style='margin-top:8px'>" + itemsOf(order) + "</p><p class='muted'>" + money(order.total_pence) + "</p></div><div class='person'><h2>" + esc(order.name) + "</h2><p>" + esc(order.address) + "</p></div></div>";
                 const actions = document.createElement("div");
                 actions.className = "actions";
@@ -156,22 +201,27 @@
                     const button = document.createElement("button");
                     button.type = "button";
                     button.textContent = LABEL[order.status];
-                    button.onclick = () => setStatus(order.id, NEXT[order.status]);
+                    button.onclick = () => setStatus(order.id, NEXT[order.status], order.slot);
                     actions.appendChild(button);
                 }
-                if (order.status !== "cancelled" && order.status !== "collected" && String(order.id).indexOf("stripe:") !== 0) {
+                if (String(order.id).indexOf("stripe:") !== 0) {
                     const cancel = document.createElement("button");
                     cancel.type = "button";
                     cancel.textContent = "Cancel";
-                    cancel.onclick = () => setStatus(order.id, "cancelled");
+                    cancel.onclick = () => setStatus(order.id, "cancelled", order.slot);
                     actions.appendChild(cancel);
                 }
                 card.appendChild(actions);
                 list.appendChild(card);
             });
         }
-        async function setStatus(id, status) {
-            await client().from("orders").update({ status }).eq("id", id);
+        async function setStatus(id, status, slot) {
+            const error = await saveStatus(id, status, slot);
+            if (error) {
+                document.getElementById("note").textContent = error.message || "Could not update that order.";
+                return;
+            }
+            if (status === "cancelled") document.getElementById("note").textContent = (slot || "That time") + " is free again.";
             loadOrders();
         }
         async function showQueue() {
@@ -188,7 +238,8 @@
                 document.getElementById("note").textContent = "Use the switch above. The order queue still needs the staff flag on this account.";
                 return;
             }
-            document.getElementById("note").textContent = "Live for " + londonDate() + ". New orders show here.";
+            document.getElementById("note").textContent = "Live for " + londonDate() + ". Cancel an order and that time can be booked again.";
+            document.getElementById("clearRow").hidden = false;
             await loadOrders();
             clearInterval(timer);
             timer = setInterval(loadOrders, 8000);
@@ -234,6 +285,29 @@
                 button.disabled = false;
             }
         };
+        document.getElementById("clearDay").onclick = async () => {
+            const button = document.getElementById("clearDay");
+            button.disabled = true;
+            const { data, error } = await client().from("orders").select("id,slot,status").eq("day", londonDate());
+            if (error) {
+                document.getElementById("note").textContent = error.message || "Could not clear the board.";
+                button.disabled = false;
+                return;
+            }
+            const live = (data || []).filter((order) => order.status !== "cancelled" && order.status !== "unpaid" && order.slot !== "ORDERS-OPEN");
+            for (let i = 0; i < live.length; i++) {
+                const failed = await saveStatus(live[i].id, "cancelled", live[i].slot);
+                if (failed) {
+                    document.getElementById("note").textContent = failed.message || "Could not clear one of the orders.";
+                    button.disabled = false;
+                    loadOrders();
+                    return;
+                }
+            }
+            button.disabled = false;
+            await loadOrders();
+            document.getElementById("note").textContent = "Board cleared. Every time is free for a new order.";
+        };
         document.getElementById("go").onclick = async () => {
             const note = document.getElementById("note");
             note.textContent = "Checking...";
@@ -272,7 +346,7 @@
                 email: email,
                 options: {
                     shouldCreateUser: false,
-                    emailRedirectTo: "https://thebrotherschipsandfish.co.uk/admin.html?v=17"
+                    emailRedirectTo: "https://thebrotherschipsandfish.co.uk/admin.html?v=18"
                 }
             });
             note.textContent = error

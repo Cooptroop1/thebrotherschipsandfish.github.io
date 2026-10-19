@@ -36,7 +36,7 @@
 </head>
 <body>
     <div class="wrap">
-        <p><a href="/order.html?v=24">Back to the menu</a></p>
+        <p><a href="/order.html?v=25">Back to the menu</a></p>
         <h1>Today's queue</h1>
         <p class="lead" id="note" style="color:#e8c96a;font-size:1.15rem">Log in with the staff email.</p>
         <div id="login">
@@ -55,6 +55,15 @@
                     <p id="switchNote">Orders are closed.</p>
                 </div>
                 <button id="switchBtn" type="button">Turn orders on</button>
+            </div>
+        </div>
+        <div class="card" id="timeCard" hidden>
+            <div class="switch">
+                <div>
+                    <h2>15 minute times</h2>
+                    <p id="timeNote">15 minute times are on.</p>
+                </div>
+                <button id="timeBtn" type="button" class="off">Turn 15 minute times off</button>
             </div>
         </div>
         <div id="list"></div>
@@ -106,6 +115,7 @@
             const note = document.getElementById("switchNote");
             const button = document.getElementById("switchBtn");
             card.hidden = false;
+            document.getElementById("timeCard").hidden = false;
             button.dataset.open = open ? "yes" : "no";
             button.className = open ? "" : "off";
             button.textContent = open ? "Turn orders off" : "Turn orders on";
@@ -114,15 +124,27 @@
                 : "Orders are closed. Customers just see a closed message.";
         }
         async function shopRow() {
-            const { data, error } = await client().from("orders").select("id,status").eq("day", "2099-01-01").eq("slot", "ORDERS-OPEN").order("created_at", { ascending: false });
+            const { data, error } = await client().from("orders").select("id,status,slot").eq("day", "2099-01-01").in("slot", ["ORDERS-OPEN", "ORDERS-OPEN-HALF"]).order("created_at", { ascending: false });
             if (error) throw error;
             const rows = data || [];
             return rows.find((row) => row.status !== "cancelled") || rows[0] || null;
+        }
+        function paintTimes(half) {
+            const note = document.getElementById("timeNote");
+            const button = document.getElementById("timeBtn");
+            document.getElementById("timeCard").hidden = false;
+            button.dataset.half = half ? "yes" : "no";
+            button.className = half ? "" : "off";
+            button.textContent = half ? "Turn 15 minute times on" : "Turn 15 minute times off";
+            note.textContent = half
+                ? "Off. Customers only see 16:30, 17:00, 17:30, 18:00, 18:30 and 19:00."
+                : "On. Customers see every 15 minutes from 16:30 to 19:00.";
         }
         async function loadSwitch() {
             try {
                 const row = await shopRow();
                 paintSwitch(!!(row && row.status !== "cancelled"));
+                paintTimes(!!(row && row.slot === "ORDERS-OPEN-HALF"));
             } catch (err) {
                 paintSwitch(false);
                 document.getElementById("switchNote").textContent = "Could not check if orders are open.";
@@ -165,7 +187,7 @@
             }
             const today = data || [];
             await freeStuck(today);
-            const rows = today.filter((order) => order.status !== "unpaid" && order.status !== "cancelled" && order.slot !== "ORDERS-OPEN" && String(order.id).indexOf("stripe:") !== 0);
+            const rows = today.filter((order) => order.status !== "unpaid" && order.status !== "cancelled" && order.slot !== "ORDERS-OPEN" && order.slot !== "ORDERS-OPEN-HALF" && String(order.id).indexOf("stripe:") !== 0);
             rows.sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
             const list = document.getElementById("list");
             list.innerHTML = "";
@@ -267,6 +289,46 @@
                 button.disabled = false;
             }
         };
+        document.getElementById("timeBtn").onclick = async () => {
+            const button = document.getElementById("timeBtn");
+            const turningHalf = button.dataset.half !== "yes";
+            button.disabled = true;
+            try {
+                const session = (await client().auth.getSession()).data.session;
+                let row = await shopRow();
+                let created = false;
+                if (!row) {
+                    const inserted = await client().from("orders").insert({
+                        user_id: session.user.id,
+                        name: "Shop",
+                        address: "Shop",
+                        slot: "ORDERS-OPEN",
+                        day: "2099-01-01",
+                        items: [],
+                        total_pence: 0,
+                        status: "new"
+                    }).select("id,status,slot").single();
+                    if (inserted.error) throw inserted.error;
+                    row = inserted.data;
+                    created = true;
+                }
+                const patch = { slot: turningHalf ? "ORDERS-OPEN-HALF" : "ORDERS-OPEN" };
+                if (created) patch.status = "cancelled";
+                const { error } = await client().from("orders").update(patch).eq("id", row.id);
+                if (error) {
+                    const raw = error.message || "Could not change it.";
+                    document.getElementById("timeNote").textContent = /policy|permission|row-level/i.test(raw)
+                        ? "Logged in, but the database blocked the switch. It needs the staff setup run once in Supabase."
+                        : raw;
+                    return;
+                }
+                paintTimes(turningHalf);
+            } catch (err) {
+                document.getElementById("timeNote").textContent = "Could not change it.";
+            } finally {
+                button.disabled = false;
+            }
+        };
         document.getElementById("clearDay").onclick = async () => {
             const button = document.getElementById("clearDay");
             button.disabled = true;
@@ -276,7 +338,7 @@
                 button.disabled = false;
                 return;
             }
-            const live = (data || []).filter((order) => order.status !== "cancelled" && order.status !== "unpaid" && order.slot !== "ORDERS-OPEN");
+            const live = (data || []).filter((order) => order.status !== "cancelled" && order.status !== "unpaid" && order.slot !== "ORDERS-OPEN" && order.slot !== "ORDERS-OPEN-HALF");
             for (let i = 0; i < live.length; i++) {
                 const failed = await saveStatus(live[i].id, "cancelled", live[i].slot);
                 if (failed) {

@@ -21,10 +21,10 @@
         .brand span { color:var(--gold); }
         .back { color:var(--cream); text-decoration:none; font-weight:700; font-size:.9rem; }
         .banner { background:#241c12; border-bottom:1px solid var(--line); color:var(--cream); padding:10px 0; font-size:.95rem; }
-        .banner[hidden], #openShop[hidden], #closedBox[hidden], #staffSwitch[hidden] { display:none; }
-        #staffSwitch { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:14px 0; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; }
-        #staffSwitch .lead { margin:0; color:var(--paper); font-weight:700; }
-        #staffSwitch .mini { background:var(--gold); color:var(--ink); border-color:var(--gold); padding:12px 16px; }
+        .banner[hidden], #openShop[hidden], #closedBox[hidden], #staffSwitch[hidden], #timeSwitch[hidden] { display:none; }
+        #staffSwitch, #timeSwitch { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin:14px 0; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; }
+        #staffSwitch .lead, #timeSwitch .lead { margin:0; color:var(--paper); font-weight:700; flex:1; min-width:200px; }
+        #staffSwitch .mini, #timeSwitch .mini { background:var(--gold); color:var(--ink); border-color:var(--gold); padding:12px 16px; }
         .bar[hidden] { display:none !important; }
         #closedBox { padding:28px 0 80px; }
         .chips { display:flex; flex-wrap:wrap; gap:8px; padding:14px 0 0; }
@@ -118,7 +118,7 @@
             <span style="display:flex;gap:14px;align-items:center">
                 <span id="who"></span>
                 <button id="logout" type="button" hidden style="background:transparent;color:#e8c96a;border:0;font:inherit;font-weight:700;cursor:pointer">Log out</button>
-                <a class="back" id="staffLink" href="/admin.html?v=23" hidden>Staff</a>
+                <a class="back" id="staffLink" href="/admin.html?v=25" hidden>Staff</a>
                 <a class="back" href="/">Back to the van</a>
             </span>
         </div>
@@ -151,6 +151,10 @@
             <p class="lead" id="switchNote">Orders are closed.</p>
             <button class="mini" id="switchBtn" type="button">Turn orders on</button>
         </div>
+        <div id="timeSwitch" hidden>
+            <p class="lead" id="timeNote">15 minute times are on.</p>
+            <button class="mini" id="timeBtn" type="button">Turn 15 minute times off</button>
+        </div>
         <div id="confirmed" class="confirmed" hidden>
             <p class="day" id="confirmedKicker">Order confirmed</p>
             <h2 id="confirmedTitle">Order confirmed</h2>
@@ -169,6 +173,7 @@
         <div class="chips">
             <span class="chip">Pickup</span>
             <span class="chip">16:30–19:00</span>
+            <span class="chip" id="gapChip">Every 15 min</span>
             <span class="chip">£15 minimum</span>
         </div>
         <h1>Order for pickup</h1>
@@ -269,6 +274,7 @@
             ["shootblack","Fruit Shoot blackcurrant",100]
         ];
         const SLOTS = ["4:30","4:45","5:00","5:15","5:30","5:45","6:00","6:15","6:30","6:45","7:00"];
+        const HALF = ["4:30","5:00","5:30","6:00","6:30","7:00"];
         const CLOCK = {"4:30":"16:30","4:45":"16:45","5:00":"17:00","5:15":"17:15","5:30":"17:30","5:45":"17:45","6:00":"18:00","6:15":"18:15","6:30":"18:30","6:45":"18:45","7:00":"19:00"};
         function clock(slot) { return CLOCK[slot] || slot || ""; }
         const basket = {};
@@ -586,7 +592,7 @@
         function drawSlots() {
             const root = document.getElementById("slots");
             root.innerHTML = "";
-            SLOTS.forEach((slot) => {
+            shownSlots().forEach((slot) => {
                 const btn = document.createElement("button");
                 btn.type = "button";
                 const mine = held === slot && left > 0;
@@ -706,6 +712,10 @@
         }
         async function takeSlot(slot) {
             if (!ordersOpen || booking || !sessionUser) return;
+            if (shownSlots().indexOf(slot) === -1) {
+                document.getElementById("hold").textContent = "That time is not on tonight.";
+                return;
+            }
             if (foodPence() < MIN_PENCE) {
                 document.getElementById("hold").textContent = "Minimum order is £15 to book a time. Add more food first.";
                 return;
@@ -802,6 +812,7 @@
             const staff = on && String(sessionUser.email || "").toLowerCase() === "jcooper4888@aol.co.uk";
             document.getElementById("staffLink").hidden = !staff;
             document.getElementById("staffSwitch").hidden = !staff;
+            document.getElementById("timeSwitch").hidden = !staff;
             if (staff) loadSwitch();
             const bar = document.getElementById("bar");
             bar.hidden = !ordersOpen;
@@ -836,6 +847,12 @@
                 try {
                     const extra = await payCall({ action: "slots" });
                     (extra.slots || []).forEach((slot) => taken.add(slot));
+                    if (extra.half === true || extra.half === false) {
+                        if (extra.half !== halfHour) {
+                            halfHour = extra.half;
+                            paintTimes(halfHour);
+                        }
+                    }
                 } catch (err) {}
             }
         }
@@ -956,7 +973,7 @@
                     email: email,
                     options: {
                         shouldCreateUser: false,
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=24"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=25"
                     }
                 });
                 if (error) {
@@ -1006,7 +1023,7 @@
                     password,
                     options: {
                         data: { name, address: full, postcode },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=24"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=25"
                     }
                 });
                 if (error) {
@@ -1060,7 +1077,7 @@
                     } else {
                         showOrder(paid, "failed", false);
                     }
-                    history.replaceState({}, "", "/order.html?v=24");
+                    history.replaceState({}, "", "/order.html?v=25");
                     return;
                 }
                 if (sessionUser) {
@@ -1068,7 +1085,7 @@
                         document.getElementById("bookedNote").textContent = "No payment was taken. The time stays held until the 5 minute timer ends.";
                         showOrder(null, "back", false);
                         resumeHold(true);
-                        history.replaceState({}, "", "/order.html?v=24");
+                        history.replaceState({}, "", "/order.html?v=25");
                         return;
                     }
                     resumeHold(false);
@@ -1077,6 +1094,8 @@
             });
         }
         let ordersOpen = false;
+        let halfHour = false;
+        function shownSlots() { return halfHour ? HALF : SLOTS; }
         function paintShop() {
             document.getElementById("closedBox").hidden = ordersOpen;
             document.getElementById("openShop").hidden = !ordersOpen;
@@ -1097,8 +1116,20 @@
             button.textContent = open ? "Turn orders off" : "Turn orders on";
             note.textContent = open ? "Orders are open." : "Orders are closed.";
         }
+        function paintTimes(half) {
+            const note = document.getElementById("timeNote");
+            const button = document.getElementById("timeBtn");
+            const chip = document.getElementById("gapChip");
+            document.getElementById("timeSwitch").hidden = !isStaff();
+            button.dataset.half = half ? "yes" : "no";
+            button.textContent = half ? "Turn 15 minute times on" : "Turn 15 minute times off";
+            note.textContent = half
+                ? "15 minute times are off. Customers see 16:30, 17:00, 17:30, 18:00, 18:30 and 19:00."
+                : "15 minute times are on. Customers see 16:30, 16:45, 17:00 and so on, through to 19:00.";
+            if (chip) chip.textContent = half ? "Every 30 min" : "Every 15 min";
+        }
         async function shopRow() {
-            const { data, error } = await sb().from("orders").select("id,status").eq("day", "2099-01-01").eq("slot", "ORDERS-OPEN").order("created_at", { ascending: false });
+            const { data, error } = await sb().from("orders").select("id,status,slot").eq("day", "2099-01-01").in("slot", ["ORDERS-OPEN", "ORDERS-OPEN-HALF"]).order("created_at", { ascending: false });
             if (error) throw error;
             const rows = data || [];
             return rows.find((row) => row.status !== "cancelled") || rows[0] || null;
@@ -1107,7 +1138,13 @@
             if (!isStaff()) return;
             try {
                 const row = await shopRow();
+                const half = !!(row && row.slot === "ORDERS-OPEN-HALF");
+                if (half !== halfHour) {
+                    halfHour = half;
+                    drawSlots();
+                }
                 paintSwitch(!!(row && row.status !== "cancelled"));
+                paintTimes(half);
             } catch (err) {
                 paintSwitch(false);
                 document.getElementById("switchNote").textContent = "Could not check the switch.";
@@ -1119,7 +1156,14 @@
                 if (!db) throw new Error("closed");
                 const { data, error } = await db.rpc("booked_slots", { for_day: "2099-01-01" });
                 if (error) throw error;
-                ordersOpen = (data || []).some((row) => row.slot === "ORDERS-OPEN");
+                const rows = data || [];
+                ordersOpen = rows.some((row) => row.slot === "ORDERS-OPEN" || row.slot === "ORDERS-OPEN-HALF");
+                const openRow = rows.find((row) => row.slot === "ORDERS-OPEN" || row.slot === "ORDERS-OPEN-HALF");
+                if (openRow && (openRow.slot === "ORDERS-OPEN-HALF") !== halfHour) {
+                    halfHour = openRow.slot === "ORDERS-OPEN-HALF";
+                    paintTimes(halfHour);
+                    drawSlots();
+                }
             } catch (err) {
                 ordersOpen = false;
             }
@@ -1164,6 +1208,48 @@
                 paintShop();
             } catch (err) {
                 document.getElementById("switchNote").textContent = "Could not change it.";
+            } finally {
+                button.disabled = false;
+            }
+        };
+        document.getElementById("timeBtn").onclick = async () => {
+            const button = document.getElementById("timeBtn");
+            const turningHalf = button.dataset.half !== "yes";
+            button.disabled = true;
+            try {
+                const session = (await sb().auth.getSession()).data.session;
+                let row = await shopRow();
+                let created = false;
+                if (!row) {
+                    const inserted = await sb().from("orders").insert({
+                        user_id: session.user.id,
+                        name: "Shop",
+                        address: "Shop",
+                        slot: "ORDERS-OPEN",
+                        day: "2099-01-01",
+                        items: [],
+                        total_pence: 0,
+                        status: "new"
+                    }).select("id,status,slot").single();
+                    if (inserted.error) throw inserted.error;
+                    row = inserted.data;
+                    created = true;
+                }
+                const patch = { slot: turningHalf ? "ORDERS-OPEN-HALF" : "ORDERS-OPEN" };
+                if (created) patch.status = "cancelled";
+                const { error } = await sb().from("orders").update(patch).eq("id", row.id);
+                if (error) {
+                    const raw = error.message || "Could not change it.";
+                    document.getElementById("timeNote").textContent = /policy|permission|row-level/i.test(raw)
+                        ? "Logged in, but the database blocked the switch. It needs the staff setup run once in Supabase."
+                        : raw;
+                    return;
+                }
+                halfHour = turningHalf;
+                paintTimes(turningHalf);
+                drawSlots();
+            } catch (err) {
+                document.getElementById("timeNote").textContent = "Could not change it.";
             } finally {
                 button.disabled = false;
             }

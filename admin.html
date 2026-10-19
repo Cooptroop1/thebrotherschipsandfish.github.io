@@ -25,6 +25,9 @@
         .muted { color:var(--muted); }
         .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
         .done { opacity:.55; }
+        .switch { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+        .switch p { color:var(--muted); margin-top:4px; }
+        button.off { background:#3a3328; color:var(--paper); }
         @media (max-width: 700px) {
             .split { grid-template-columns:1fr; }
             .person { text-align:left; }
@@ -33,7 +36,7 @@
 </head>
 <body>
     <div class="wrap">
-        <p><a href="/order.html?v=13">Back to the menu</a></p>
+        <p><a href="/order.html?v=14">Back to the menu</a></p>
         <h1>Today's queue</h1>
         <p class="lead" id="note" style="color:#e8c96a;font-size:1.15rem">Log in with the staff email.</p>
         <div id="login">
@@ -42,6 +45,15 @@
             <label for="pass">Password</label>
             <input id="pass" type="password" autocomplete="current-password">
             <p style="margin-top:12px"><button id="go" type="button">Log in</button></p>
+        </div>
+        <div class="card" id="switchCard" hidden>
+            <div class="switch">
+                <div>
+                    <h2>Pickup orders</h2>
+                    <p id="switchNote">Orders are closed.</p>
+                </div>
+                <button id="switchBtn" type="button">Turn orders on</button>
+            </div>
         </div>
         <div id="list"></div>
     </div>
@@ -75,6 +87,41 @@
         function itemsOf(order) {
             const items = Array.isArray(order.items) ? order.items : [];
             return items.map((item) => esc(item.qty) + " × " + esc(item.name)).join("<br>");
+        }
+        async function payCall(body) {
+            const cfg = window.ORDER_CONFIG || {};
+            const sb = client();
+            const session = sb ? (await sb.auth.getSession()).data.session : null;
+            const res = await fetch(cfg.payUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: "Bearer " + (session ? session.access_token : "")
+                },
+                body: JSON.stringify(body)
+            });
+            return res.json();
+        }
+        function paintSwitch(open) {
+            const card = document.getElementById("switchCard");
+            const note = document.getElementById("switchNote");
+            const button = document.getElementById("switchBtn");
+            card.hidden = false;
+            button.dataset.open = open ? "yes" : "no";
+            button.className = open ? "" : "off";
+            button.textContent = open ? "Turn orders off" : "Turn orders on";
+            note.textContent = open
+                ? "Orders are open. Customers can order for pickup."
+                : "Orders are closed. Customers just see a closed message.";
+        }
+        async function loadSwitch() {
+            try {
+                const data = await payCall({ action: "shop" });
+                paintSwitch(!!(data && data.open === true));
+            } catch (err) {
+                paintSwitch(false);
+                document.getElementById("switchNote").textContent = "Could not check if orders are open.";
+            }
         }
         async function loadOrders() {
             const sb = client();
@@ -147,11 +194,29 @@
                 return;
             }
             document.getElementById("note").textContent = "Live for " + londonDate() + ". New orders show here.";
+            await loadSwitch();
             await loadOrders();
             clearInterval(timer);
             timer = setInterval(loadOrders, 8000);
             client().channel("queue").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, loadOrders).subscribe();
         }
+        document.getElementById("switchBtn").onclick = async () => {
+            const button = document.getElementById("switchBtn");
+            const turningOn = button.dataset.open !== "yes";
+            button.disabled = true;
+            try {
+                const data = await payCall({ action: "shop", open: turningOn });
+                if (!data || data.error || typeof data.open !== "boolean") {
+                    document.getElementById("switchNote").textContent = (data && data.error) || "Could not change it.";
+                    return;
+                }
+                paintSwitch(data.open);
+            } catch (err) {
+                document.getElementById("switchNote").textContent = "Could not change it.";
+            } finally {
+                button.disabled = false;
+            }
+        };
         document.getElementById("go").onclick = async () => {
             const note = document.getElementById("note");
             note.textContent = "Checking...";

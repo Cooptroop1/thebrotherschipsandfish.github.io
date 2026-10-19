@@ -77,10 +77,13 @@
         button.slot.taken { opacity:.38; text-decoration:line-through; }
         .chip-list { display:grid; gap:8px; margin-top:12px; }
         .chip-list button { text-align:left; padding-left:14px; }
-        .login label { display:block; font-weight:700; margin:10px 0 4px; }
-        .login input, .login textarea { width:100%; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:12px; font:inherit; }
-        .login .rowbtns { display:flex; gap:8px; margin-top:12px; }
-        .login .rowbtns .go { flex:1; }
+        .login label { display:block; font-weight:700; font-size:.82rem; margin:8px 0 3px; }
+        .login input, .login textarea { width:100%; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:8px 10px; font:inherit; }
+        .account { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin:0 0 8px; flex-wrap:wrap; }
+        .login-note { margin:0; color:var(--gold2); font-size:.92rem; flex:1; text-align:right; }
+        .mini { border:1px solid var(--line); background:transparent; color:var(--gold2); border-radius:999px; padding:6px 14px; font:inherit; font-weight:700; font-size:.9rem; cursor:pointer; }
+        .mini.on { background:var(--gold); color:var(--ink); border-color:var(--gold); }
+        .panel { max-width:360px; margin:0 0 14px auto; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px 14px; }
         #who { color:var(--gold2); font-weight:700; }
         @media (max-width: 800px) {
             .layout { grid-template-columns:1fr; padding-bottom:96px; }
@@ -110,13 +113,13 @@
             <span class="chip">15 min slots</span>
         </div>
         <h1>Order for pickup</h1>
-        <p class="lead">Log in first. Then add the food and tap a pickup time. That time is then taken.</p>
-        <div id="gate" class="login">
-            <div class="rowbtns">
-                <button class="go" id="showLogin" type="button">Log in</button>
-                <button class="go" id="showJoin" type="button">Sign up</button>
-            </div>
-            <p class="lead" id="loginNote">Log in before you order.</p>
+        <p class="lead">Tap + to add. Then pick a pickup time. That time is taken straight away.</p>
+        <div id="account" class="account">
+            <p id="loginNote" class="login-note"></p>
+            <button class="mini" id="showLogin" type="button">Log in</button>
+            <button class="mini" id="showJoin" type="button">Sign up</button>
+        </div>
+        <div id="gate" class="login panel" hidden>
             <div id="joinFields" hidden>
                 <label for="loginName">Name</label>
                 <input id="loginName" autocomplete="name">
@@ -129,9 +132,9 @@
             <input id="loginEmail" type="email" autocomplete="email">
             <label for="loginPass">Password</label>
             <input id="loginPass" type="password" autocomplete="current-password">
-            <button class="go" id="doGo" type="button" style="margin-top:12px">Log in</button>
+            <button class="go" id="doGo" type="button" style="margin-top:10px">Log in</button>
         </div>
-        <div id="shop" hidden>
+        <div id="shop">
         <p class="lead" id="bookedNote"></p>
         <div class="layout">
             <div id="menu"></div>
@@ -247,7 +250,16 @@
         function needsChips(row) {
             return row[1] !== "Chips" && row[1] !== "Sauces" && !/chips/i.test(row[2]);
         }
+        function askAuth(message) {
+            document.getElementById("loginNote").textContent = message;
+            document.getElementById("gate").hidden = false;
+            document.getElementById("account").scrollIntoView({ block: "start" });
+        }
         function plusItem(row) {
+            if (!sessionUser) {
+                askAuth("Log in or sign up to add food.");
+                return;
+            }
             if (row[1] === "Kids") askDrink(row);
             else if (row[0] === "taster") askSide(row);
             else if (needsChips(row)) askChips(row);
@@ -500,7 +512,11 @@
             draw();
         }
         function openSheet() {
-            if (!count() || !sessionUser) return;
+            if (!sessionUser) {
+                askAuth("Log in or sign up to book a time.");
+                return;
+            }
+            if (!count()) return;
             loadTaken().finally(() => {
                 document.getElementById("bg").classList.add("open");
                 document.getElementById("sheet").classList.add("open");
@@ -536,19 +552,20 @@
         function paintWho() {
             const el = document.getElementById("who");
             const on = !!sessionUser;
-            document.getElementById("gate").hidden = on;
-            document.getElementById("shop").hidden = !on;
+            document.getElementById("account").hidden = on;
+            if (on) document.getElementById("gate").hidden = true;
             document.getElementById("logout").hidden = !on;
             document.getElementById("staffLink").hidden = !on || String(sessionUser.email || "").toLowerCase() !== "jcooper4888@aol.co.uk";
             const bar = document.getElementById("bar");
-            if (!on) bar.style.display = "none";
-            else bar.style.removeProperty("display");
+            bar.style.removeProperty("display");
             if (el) el.textContent = on ? ((profile && profile.name) || sessionUser.email) : "";
         }
         function showJoin(on) {
             document.getElementById("joinFields").hidden = !on;
+            document.getElementById("gate").hidden = false;
             document.getElementById("doGo").textContent = on ? "Create account" : "Log in";
-            document.getElementById("doGo").dataset.mode = on ? "join" : "login";
+            document.getElementById("showLogin").classList.toggle("on", !on);
+            document.getElementById("showJoin").classList.toggle("on", on);
         }
         async function loadProfile() {
             const db = sb();

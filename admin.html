@@ -19,10 +19,16 @@
         button { border:0; border-radius:999px; background:var(--gold); color:var(--ink); font:inherit; font-weight:700; padding:10px 14px; cursor:pointer; }
         .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; margin:10px 0; }
         .card h2 { font-family:Fraunces,serif; font-size:1.4rem; }
-        .slot { color:var(--gold); font-weight:700; letter-spacing:.08em; }
+        .slot { color:var(--gold); font-family:Fraunces,serif; font-size:2.6rem; font-weight:700; line-height:1; }
+        .split { display:grid; grid-template-columns:1.3fr .7fr; gap:18px; align-items:start; }
+        .person { text-align:right; }
         .muted { color:var(--muted); }
         .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
         .done { opacity:.55; }
+        @media (max-width: 700px) {
+            .split { grid-template-columns:1fr; }
+            .person { text-align:left; }
+        }
     </style>
 </head>
 <body>
@@ -87,7 +93,7 @@
             rows.forEach((order) => {
                 const card = document.createElement("article");
                 card.className = "card" + (order.status === "collected" || order.status === "cancelled" ? " done" : "");
-                card.innerHTML = "<p class='slot'>" + esc(order.slot) + " · " + esc(order.status) + "</p><h2>" + esc(order.name) + "</h2><p>" + esc(order.address) + "</p><p style='margin-top:8px'>" + itemsOf(order) + "</p><p class='muted'>" + money(order.total_pence) + "</p>";
+                card.innerHTML = "<div class='split'><div><p class='slot'>" + esc(order.slot) + "</p><p class='muted'>" + esc(order.status) + "</p><p style='margin-top:8px'>" + itemsOf(order) + "</p><p class='muted'>" + money(order.total_pence) + "</p></div><div class='person'><h2>" + esc(order.name) + "</h2><p>" + esc(order.address) + "</p></div></div>";
                 const actions = document.createElement("div");
                 actions.className = "actions";
                 if (NEXT[order.status]) {
@@ -114,7 +120,13 @@
         }
         async function showQueue() {
             document.getElementById("login").style.display = "none";
-            const { data } = await client().from("profiles").select("is_admin,name").eq("id", (await client().auth.getSession()).data.session.user.id).maybeSingle();
+            const session = (await client().auth.getSession()).data.session;
+            const email = session && session.user && session.user.email ? session.user.email.toLowerCase() : "";
+            if (email !== "jcooper4888@aol.co.uk") {
+                document.getElementById("note").textContent = "This login is not staff.";
+                return;
+            }
+            const { data } = await client().from("profiles").select("is_admin,name").eq("id", session.user.id).maybeSingle();
             if (!data || !data.is_admin) {
                 document.getElementById("note").textContent = "This login is not staff.";
                 return;

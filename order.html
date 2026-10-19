@@ -108,7 +108,7 @@
             <span style="display:flex;gap:14px;align-items:center">
                 <span id="who"></span>
                 <button id="logout" type="button" hidden style="background:transparent;color:#e8c96a;border:0;font:inherit;font-weight:700;cursor:pointer">Log out</button>
-                <a class="back" id="staffLink" href="/admin.html?v=19" hidden>Staff</a>
+                <a class="back" id="staffLink" href="/admin.html?v=20" hidden>Staff</a>
                 <a class="back" href="/">Back to the van</a>
             </span>
         </div>
@@ -170,7 +170,7 @@
         <h2>Pick a pickup</h2>
         <p class="lead">Tap a free time. You then pay by card. Test card 4242 4242 4242 4242, any future date, any three-digit code.</p>
         <div class="grid" id="slots"></div>
-        <p class="hold" id="hold">Pick a time. It is held for 5 minutes, then it frees if you do not finish.</p>
+        <p class="hold" id="hold">Pick a time. It is held for 5 minutes while you pay. Coming back does not start the timer again.</p>
         <div id="totals"></div>
         <button class="go" id="pay" type="button" disabled>Pay</button>
     </div>
@@ -247,6 +247,7 @@
         const basket = {};
         const extras = {};
         let held = "";
+        let holdUntil = 0;
         let left = 0;
         let timer = 0;
         const money = (p) => "£" + (p / 100).toFixed(2);
@@ -501,11 +502,12 @@
             SLOTS.forEach((slot) => {
                 const btn = document.createElement("button");
                 btn.type = "button";
-                const gone = taken.has(slot);
-                btn.className = "slot" + (held === slot ? " on" : "") + (gone ? " taken" : "");
-                const mins = held === slot ? Math.floor(left / 60) : 0;
-                const secs = held === slot ? left % 60 : 0;
-                btn.innerHTML = slot + "<small>" + (gone ? "Taken" : held === slot ? ("Held " + mins + ":" + String(secs).padStart(2, "0")) : "Free") + "</small>";
+                const mine = held === slot && left > 0;
+                const gone = taken.has(slot) && !mine;
+                btn.className = "slot" + (mine ? " on" : "") + (gone ? " taken" : "");
+                const mins = mine ? Math.floor(left / 60) : 0;
+                const secs = mine ? left % 60 : 0;
+                btn.innerHTML = slot + "<small>" + (gone ? "Taken" : mine ? ("Held " + mins + ":" + String(secs).padStart(2, "0")) : "Free") + "</small>";
                 if (!gone) btn.onclick = () => takeSlot(slot);
                 root.appendChild(btn);
             });
@@ -525,8 +527,41 @@
             });
             return res.json();
         }
+        let holdClock = 0;
+        let cameBack = false;
+        function tickHold() {
+            clearInterval(holdClock);
+            holdClock = setInterval(() => {
+                left = Math.max(0, Math.ceil((holdUntil - Date.now()) / 1000));
+                const note = document.getElementById("hold");
+                if (left <= 0) {
+                    clearInterval(holdClock);
+                    held = "";
+                    if (note) note.textContent = "That 5 minute hold has finished. The time is free again.";
+                    loadTaken().then(() => drawSlots());
+                    return;
+                }
+                const mins = Math.floor(left / 60);
+                const secs = String(left % 60).padStart(2, "0");
+                if (note) note.textContent = held + " is held for " + mins + ":" + secs + ". Add food if you need to, then press that time again. The timer does not start over.";
+                drawSlots();
+            }, 1000);
+        }
+        async function resumeHold(forceSheet) {
+            if (!sessionUser) return;
+            const data = await payCall({ action: "hold" });
+            if (!data || !data.slot || !data.hold_until) return;
+            holdUntil = Number(data.hold_until) * 1000;
+            left = Math.max(0, Math.ceil((holdUntil - Date.now()) / 1000));
+            if (left <= 0) return;
+            held = data.slot;
+            tickHold();
+            drawSlots();
+            if (forceSheet && ordersOpen) openSheet();
+        }
         async function takeSlot(slot) {
-            if (!ordersOpen || taken.has(slot) || booking || !sessionUser) return;
+            if (!ordersOpen || booking || !sessionUser) return;
+            if (taken.has(slot) && !(held === slot && left > 0)) return;
             const db = sb();
             if (!db) return;
             booking = true;
@@ -539,6 +574,12 @@
                 await loadTaken();
                 drawSlots();
                 return;
+            }
+            if (data.hold_until) {
+                held = slot;
+                holdUntil = Number(data.hold_until) * 1000;
+                left = Math.max(0, Math.ceil((holdUntil - Date.now()) / 1000));
+                tickHold();
             }
             window.location.href = data.url;
         }
@@ -653,7 +694,7 @@
                     email: email,
                     options: {
                         shouldCreateUser: false,
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=19"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=20"
                     }
                 });
                 if (error) {
@@ -703,7 +744,7 @@
                     password,
                     options: {
                         data: { name, address: full, postcode },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=19"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=20"
                     }
                 });
                 if (error) {
@@ -728,10 +769,15 @@
                 sessionUser = data.session && data.session.user;
                 if (sessionUser) await loadProfile();
                 else paintWho();
-                const sessionId = new URLSearchParams(window.location.search).get("session_id");
+                const query = new URLSearchParams(window.location.search);
+                const sessionId = query.get("session_id");
+                const paidFlag = query.get("paid");
+                if (paidFlag === "0") cameBack = true;
                 if (sessionId && sessionUser && sb()) {
                     const paid = await payCall({ action: "confirm", session_id: sessionId });
-                    if (paid && paid.ok) {
+                    if (paid && paid.ok && paid.saved) {
+                        document.getElementById("bookedNote").textContent = "Paid. Booked for " + paid.slot + ".";
+                    } else if (paid && paid.ok) {
                         const saved = await sb().from("orders").insert({
                             user_id: sessionUser.id,
                             name: paid.name || (profile && profile.name) || "",
@@ -743,11 +789,16 @@
                             status: "new"
                         });
                         document.getElementById("bookedNote").textContent = saved.error
-                            ? "Paid, but that time was still blocked. Staff need to cancel the old order, then it can be booked again."
+                            ? "Paid, but the queue did not take it yet. Refresh the staff page in a moment."
                             : "Paid. Booked for " + paid.slot + ".";
                     } else {
                         document.getElementById("bookedNote").textContent = "The card payment did not finish.";
                     }
+                    history.replaceState({}, "", "/order.html?v=20");
+                } else if (sessionUser) {
+                    if (cameBack) document.getElementById("bookedNote").textContent = "No payment was taken. The time stays held until the 5 minute timer ends.";
+                    resumeHold(cameBack);
+                    if (cameBack) history.replaceState({}, "", "/order.html?v=20");
                 }
             });
         }
@@ -799,6 +850,7 @@
                 ordersOpen = false;
             }
             paintShop();
+            if (cameBack && ordersOpen) openSheet();
         }
         document.getElementById("switchBtn").onclick = async () => {
             const button = document.getElementById("switchBtn");

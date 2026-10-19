@@ -83,7 +83,7 @@ function londonDate() {
 
 function quote(id: string) {
   if (FOOD[id]) return { name: FOOD[id].name, pence: FOOD[id].pence };
-  if (CANS[id]) return { name: CANS[id], pence: 130 };
+  if (CANS[id]) return { name: CANS[id], pence: 100 };
   const parts = id.split(":");
   if (parts.length !== 2) return null;
   const base = FOOD[parts[0]];

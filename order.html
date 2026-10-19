@@ -96,6 +96,7 @@
             <a class="brand" href="/">The Brothers <span>Chips & Fish</span></a>
             <span style="display:flex;gap:14px;align-items:center">
                 <span id="who"></span>
+                <button id="logout" type="button" hidden style="background:transparent;color:#e8c96a;border:0;font:inherit;font-weight:700;cursor:pointer">Log out</button>
                 <a class="back" href="/admin.html">Staff</a>
                 <a class="back" href="/">Back to the van</a>
             </span>
@@ -109,10 +110,33 @@
             <span class="chip">15 min slots</span>
         </div>
         <h1>Order for pickup</h1>
-        <p class="lead">Tap + to add. Then pick a 15-minute pickup. The slot stays yours for 5 minutes on this screen.</p>
+        <p class="lead">Log in first. Then add the food and tap a pickup time. That time is then taken.</p>
+        <div id="gate" class="login">
+            <div class="rowbtns">
+                <button class="go" id="showLogin" type="button">Log in</button>
+                <button class="go" id="showJoin" type="button">Sign up</button>
+            </div>
+            <p class="lead" id="loginNote">Log in before you order.</p>
+            <div id="joinFields" hidden>
+                <label for="loginName">Name</label>
+                <input id="loginName" autocomplete="name">
+                <label for="loginAddress">Address</label>
+                <textarea id="loginAddress" rows="2" autocomplete="street-address"></textarea>
+                <label for="loginPostcode">Postcode</label>
+                <input id="loginPostcode" autocomplete="postal-code">
+            </div>
+            <label for="loginEmail">Email</label>
+            <input id="loginEmail" type="email" autocomplete="email">
+            <label for="loginPass">Password</label>
+            <input id="loginPass" type="password" autocomplete="current-password">
+            <button class="go" id="doGo" type="button" style="margin-top:12px">Log in</button>
+        </div>
+        <div id="shop" hidden>
+        <p class="lead" id="bookedNote"></p>
         <div class="layout">
             <div id="menu"></div>
             <aside class="basket" id="desk"></aside>
+        </div>
         </div>
     </main>
     <button class="bar" id="bar" type="button">Basket</button>
@@ -121,7 +145,7 @@
         <div class="grab"></div>
         <p class="day">This evening</p>
         <h2>Pick a pickup</h2>
-        <p class="lead">15 minutes. Last order is 7:00. Yours is held while you finish.</p>
+        <p class="lead">Tap a free time. Nobody else can take it after you do.</p>
         <div class="grid" id="slots"></div>
         <p class="hold" id="hold">Pick a time. It is held for 5 minutes, then it frees if you do not finish.</p>
         <div id="totals"></div>
@@ -132,24 +156,6 @@
         <div class="grab"></div>
         <h2 id="chipTitle">Add chips?</h2>
         <div class="chip-list" id="chipChoices"></div>
-    </div>
-    <div class="sheet-bg" id="loginBg"></div>
-    <div class="sheet login" id="loginSheet" role="dialog" aria-label="Login">
-        <div class="grab"></div>
-        <h2>Login to book a slot to pickup.</h2>
-        <p class="lead" id="loginNote">Use the same email each time. A new account has to be confirmed from your inbox before it can book.</p>
-        <label for="loginName">Name</label>
-        <input id="loginName" autocomplete="name">
-        <label for="loginAddress">Address</label>
-        <textarea id="loginAddress" rows="2" autocomplete="street-address"></textarea>
-        <label for="loginEmail">Email</label>
-        <input id="loginEmail" type="email" autocomplete="email">
-        <label for="loginPass">Password</label>
-        <input id="loginPass" type="password" autocomplete="current-password">
-        <div class="rowbtns">
-            <button class="go" id="doLogin" type="button">Log in</button>
-            <button class="go" id="doJoin" type="button">Create account</button>
-        </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="order-config.js?v=2"></script>
@@ -454,48 +460,59 @@
                 const mins = held === slot ? Math.floor(left / 60) : 0;
                 const secs = held === slot ? left % 60 : 0;
                 btn.innerHTML = slot + "<small>" + (gone ? "Taken" : held === slot ? ("Held " + mins + ":" + String(secs).padStart(2, "0")) : "Free") + "</small>";
-                if (!gone) btn.onclick = () => hold(slot);
+                if (!gone) btn.onclick = () => takeSlot(slot);
                 root.appendChild(btn);
             });
         }
-        function hold(slot) {
-            held = slot;
-            left = 5 * 60;
-            clearInterval(timer);
-            timer = setInterval(() => {
-                left -= 1;
-                if (left <= 0) {
-                    clearInterval(timer);
-                    held = "";
-                    document.getElementById("hold").textContent = "That hold ran out. Pick the time again.";
-                    document.getElementById("pay").disabled = true;
-                } else {
-                    const mins = Math.floor(left / 60);
-                    document.getElementById("hold").innerHTML = "<b>" + held + " is yours for " + mins + ":" + String(left % 60).padStart(2, "0") + ".</b> If you don't finish, it goes back.";
-                }
+        let slotPoll = 0;
+        async function takeSlot(slot) {
+            if (taken.has(slot) || booking || !sessionUser) return;
+            const db = sb();
+            if (!db) return;
+            booking = true;
+            const items = Object.entries(basket).map(([id, n]) => {
+                const item = lookup(id);
+                return { name: item.name, qty: n, pence: item.pence };
+            });
+            const { error } = await db.from("orders").insert({
+                user_id: sessionUser.id,
+                name: (profile && profile.name) || "",
+                address: (profile && profile.address) || "",
+                slot: slot,
+                day: londonDate(),
+                items: items,
+                total_pence: foodPence(),
+                status: "new"
+            });
+            booking = false;
+            if (error) {
+                document.getElementById("hold").textContent = error.code === "23505" ? "That time has just gone. Pick another." : "Could not take that time. Try again.";
+                await loadTaken();
                 drawSlots();
-            }, 1000);
-            document.getElementById("hold").innerHTML = "<b>" + slot + " is yours for 5:00.</b> If you don't finish, it goes back.";
+                return;
+            }
+            Object.keys(basket).forEach((id) => delete basket[id]);
+            held = "";
+            clearInterval(timer);
+            document.getElementById("bookedNote").textContent = "Booked for " + slot + ". Nothing has been charged yet.";
+            document.getElementById("hold").textContent = "Booked for " + slot + ".";
+            closeSheet();
             draw();
         }
         function openSheet() {
-            if (!count()) return;
-            if (!sessionUser) {
-                openLogin();
-                return;
-            }
-            if (!profile || !profile.name || !profile.address) {
-                openLogin();
-                document.getElementById("loginNote").textContent = "Add your name and address, then you can book a slot.";
-                return;
-            }
+            if (!count() || !sessionUser) return;
             loadTaken().finally(() => {
                 document.getElementById("bg").classList.add("open");
                 document.getElementById("sheet").classList.add("open");
                 drawSlots();
             });
+            clearInterval(slotPoll);
+            slotPoll = setInterval(() => {
+                loadTaken().then(drawSlots);
+            }, 4000);
         }
         function closeSheet() {
+            clearInterval(slotPoll);
             document.getElementById("bg").classList.remove("open");
             document.getElementById("sheet").classList.remove("open");
         }
@@ -518,26 +535,25 @@
         }
         function paintWho() {
             const el = document.getElementById("who");
-            if (!el) return;
-            el.textContent = sessionUser ? ((profile && profile.name) || sessionUser.email) : "";
+            const on = !!sessionUser;
+            document.getElementById("gate").hidden = on;
+            document.getElementById("shop").hidden = !on;
+            document.getElementById("logout").hidden = !on;
+            const bar = document.getElementById("bar");
+            if (!on) bar.style.display = "none";
+            else bar.style.removeProperty("display");
+            if (el) el.textContent = on ? ((profile && profile.name) || sessionUser.email) : "";
         }
-        function openLogin() {
-            document.getElementById("loginBg").classList.add("open");
-            document.getElementById("loginSheet").classList.add("open");
-        }
-        function closeLogin() {
-            document.getElementById("loginBg").classList.remove("open");
-            document.getElementById("loginSheet").classList.remove("open");
+        function showJoin(on) {
+            document.getElementById("joinFields").hidden = !on;
+            document.getElementById("doGo").textContent = on ? "Create account" : "Log in";
+            document.getElementById("doGo").dataset.mode = on ? "join" : "login";
         }
         async function loadProfile() {
             const db = sb();
             if (!db || !sessionUser) return;
             const { data } = await db.from("profiles").select("name,address,is_admin").eq("id", sessionUser.id).maybeSingle();
             profile = data || { name: "", address: "", is_admin: false };
-            const name = document.getElementById("loginName");
-            const address = document.getElementById("loginAddress");
-            if (name && !name.value) name.value = profile.name || "";
-            if (address && !address.value) address.value = profile.address || "";
             paintWho();
             draw();
         }
@@ -548,67 +564,22 @@
             const { data } = await db.rpc("booked_slots", { for_day: londonDate() });
             (data || []).forEach((row) => taken.add(row.slot));
         }
-        async function saveProfile(name, address) {
-            const db = sb();
-            const { error } = await db.from("profiles").update({ name, address }).eq("id", sessionUser.id);
-            if (!error) profile = Object.assign({}, profile, { name, address });
-            paintWho();
-            return error;
-        }
         async function afterLogin() {
             await loadProfile();
-            const name = document.getElementById("loginName").value.trim();
-            const address = document.getElementById("loginAddress").value.trim();
-            if (name && address) await saveProfile(name, address);
-            await loadProfile();
-            if (!profile || !profile.name || !profile.address) {
-                document.getElementById("loginNote").textContent = "Add your name and address, then you can book a slot.";
-                return;
-            }
-            closeLogin();
-            openSheet();
-        }
-        async function bookOrder() {
-            if (!held || !count() || booking) return;
-            const db = sb();
-            if (!db || !sessionUser) {
-                openLogin();
-                return;
-            }
-            booking = true;
-            const slot = held;
-            const items = Object.entries(basket).map(([id, n]) => {
-                const item = lookup(id);
-                return { name: item.name, qty: n, pence: item.pence };
-            });
-            const { error } = await db.from("orders").insert({
-                user_id: sessionUser.id,
-                name: profile.name,
-                address: profile.address,
-                slot: slot,
-                day: londonDate(),
-                items: items,
-                total_pence: foodPence(),
-                status: "new"
-            });
-            booking = false;
-            if (error) {
-                document.getElementById("hold").textContent = error.code === "23505" ? "That slot has just gone. Pick another." : "Could not book that slot. Try again.";
-                if (error.code === "23505") held = "";
-                await loadTaken();
-                draw();
-                return;
-            }
-            Object.keys(basket).forEach((id) => delete basket[id]);
-            held = "";
-            clearInterval(timer);
-            document.getElementById("hold").textContent = "Booked for " + slot + ". Nothing has been charged yet.";
-            draw();
+            paintWho();
         }
         function bootAuth() {
             const db = sb();
-            document.getElementById("loginBg").onclick = closeLogin;
-            document.getElementById("doLogin").onclick = async () => {
+            let mode = "login";
+            document.getElementById("showLogin").onclick = () => { mode = "login"; showJoin(false); };
+            document.getElementById("showJoin").onclick = () => { mode = "join"; showJoin(true); };
+            document.getElementById("logout").onclick = async () => {
+                if (sb()) await sb().auth.signOut();
+                sessionUser = null;
+                profile = null;
+                paintWho();
+            };
+            document.getElementById("doGo").onclick = async () => {
                 const note = document.getElementById("loginNote");
                 if (!sb()) {
                     note.textContent = "Login is not switched on yet.";
@@ -616,34 +587,30 @@
                 }
                 const email = document.getElementById("loginEmail").value.trim();
                 const password = document.getElementById("loginPass").value;
-                const { error } = await sb().auth.signInWithPassword({ email, password });
-                if (error) {
-                    note.textContent = error.message;
-                    return;
-                }
-                sessionUser = (await sb().auth.getSession()).data.session.user;
-                await afterLogin();
-            };
-            document.getElementById("doJoin").onclick = async () => {
-                const note = document.getElementById("loginNote");
-                if (!sb()) {
-                    note.textContent = "Login is not switched on yet.";
+                if (mode === "login") {
+                    const { error } = await sb().auth.signInWithPassword({ email, password });
+                    if (error) {
+                        note.textContent = error.message;
+                        return;
+                    }
+                    sessionUser = (await sb().auth.getSession()).data.session.user;
+                    await afterLogin();
                     return;
                 }
                 const name = document.getElementById("loginName").value.trim();
                 const address = document.getElementById("loginAddress").value.trim();
-                const email = document.getElementById("loginEmail").value.trim();
-                const password = document.getElementById("loginPass").value;
-                if (!name || !address || !email || password.length < 6) {
-                    note.textContent = "Name, address, email and a password of at least 6 characters.";
+                const postcode = document.getElementById("loginPostcode").value.trim().toUpperCase();
+                if (!name || !address || !postcode || !email || password.length < 6) {
+                    note.textContent = "Name, address, postcode, email and a password of at least 6 characters.";
                     return;
                 }
+                const full = address + ", " + postcode;
                 const { data, error } = await sb().auth.signUp({
                     email,
                     password,
                     options: {
-                        data: { name, address },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=7"
+                        data: { name, address: full, postcode },
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=8"
                     }
                 });
                 if (error) {
@@ -651,21 +618,28 @@
                     return;
                 }
                 if (!data.session) {
-                    note.textContent = "Check your email and confirm it, then log in.";
+                    note.textContent = "Check your email and confirm it, then press Log in.";
+                    mode = "login";
+                    showJoin(false);
                     return;
                 }
                 sessionUser = data.session.user;
+                await sb().from("profiles").update({ name, address: full }).eq("id", sessionUser.id);
                 await afterLogin();
             };
-            if (!db) return;
+            if (!db) {
+                paintWho();
+                return;
+            }
             db.auth.getSession().then(({ data }) => {
                 sessionUser = data.session && data.session.user;
                 if (sessionUser) loadProfile();
                 else paintWho();
             });
         }
-        document.getElementById("pay").onclick = () => { bookOrder(); };
+        document.getElementById("pay").hidden = true;
         draw();
+        paintWho();
         bootAuth();
     </script>
 </body>

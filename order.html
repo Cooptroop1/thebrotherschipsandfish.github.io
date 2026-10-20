@@ -16,7 +16,8 @@
         img { max-width:100%; display:block; }
         .wrap { width:min(1100px, calc(100% - 24px)); margin:0 auto; }
         header { position:sticky; top:0; z-index:20; background:rgba(18,14,11,.94); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
-        .top { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; }
+        .top { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; flex-wrap:wrap; }
+        .top-actions { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-left:auto; }
         .brand { font-family:Fraunces,Georgia,serif; color:var(--paper); text-decoration:none; font-weight:700; font-size:1.15rem; }
         .brand span { color:var(--gold); }
         .back { color:var(--cream); text-decoration:none; font-weight:700; font-size:.9rem; }
@@ -88,7 +89,7 @@
         .chip-list button { text-align:left; padding-left:14px; }
         .login label { display:block; font-weight:700; font-size:.82rem; margin:8px 0 3px; }
         .login input, .login textarea { width:100%; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:8px 10px; font:inherit; }
-        .account { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin:0 0 8px; flex-wrap:wrap; }
+        .account { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin:0; flex-wrap:wrap; }
         .account[hidden], .panel[hidden], #gate[hidden] { display:none !important; }
         #confirmed[hidden] { display:none; }
         .confirmed { background:#241c12; border:1px solid var(--gold); border-radius:16px; padding:16px; margin:14px 0 8px; max-width:440px; }
@@ -112,21 +113,21 @@
     <header>
         <div class="wrap top">
             <a class="brand" href="/">The Brothers <span>Chips & Fish</span></a>
-            <span style="display:flex;gap:14px;align-items:center">
+            <span class="top-actions">
                 <span id="who"></span>
                 <button id="logout" type="button" hidden style="background:transparent;color:#e8c96a;border:0;font:inherit;font-weight:700;cursor:pointer">Log out</button>
                 <a class="back" id="staffLink" href="/admin.html?v=28" hidden>Staff</a>
+                <span id="account" class="account">
+                    <button class="mini" id="showLogin" type="button">Log in</button>
+                    <button class="mini" id="showJoin" type="button">Sign up</button>
+                </span>
                 <a class="back" href="/">Back to the van</a>
             </span>
         </div>
     </header>
     <div class="banner" id="banner"><div class="wrap">Orders are closed.</div></div>
     <main class="wrap">
-        <div id="account" class="account">
-            <p id="loginNote" class="login-note"></p>
-            <button class="mini" id="showLogin" type="button">Log in</button>
-            <button class="mini" id="showJoin" type="button">Sign up</button>
-        </div>
+        <p id="loginNote" hidden></p>
         <div id="gate" class="login panel">
             <div id="joinFields" hidden>
                 <label for="loginName">Name</label>

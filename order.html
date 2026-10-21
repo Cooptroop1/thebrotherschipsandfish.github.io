@@ -59,6 +59,11 @@
         .empty { color:var(--muted); }
         .go { width:100%; margin-top:12px; border:0; border-radius:999px; background:var(--gold); color:var(--ink); font:inherit; font-weight:700; padding:14px; cursor:pointer; }
         .go:disabled { opacity:.45; cursor:not-allowed; }
+        .go.ghost { background:transparent; color:var(--gold2); border:1px solid var(--gold); margin-top:8px; }
+        #payChoice[hidden], #codeBox[hidden] { display:none !important; }
+        #codeBox { margin-top:12px; }
+        #codeBox label { display:block; font-weight:700; font-size:.82rem; margin:8px 0 3px; }
+        #codeBox input { width:100%; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:8px 10px; font:inherit; }
         .bar { display:none; }
         .sheet-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:40; }
         .sheet-bg.open { display:block; }
@@ -183,10 +188,22 @@
         <div class="grab"></div>
         <p class="day">This evening</p>
         <h2>Pick a pickup</h2>
-        <p class="lead">Tap a free time. The basket must be at least £15. The card form stays on this page and the 5 minute timer keeps running.</p>
+        <p class="lead">Tap a free time. Then pay now on card, or pay later if we gave you a code. A card payment holds the time for 5 minutes.</p>
         <p class="lead" id="ukClock">UK time</p>
         <div class="grid" id="slots"></div>
-        <p class="hold" id="hold">Pick a time. It is held for 5 minutes while you pay. Coming back does not start the timer again.</p>
+        <p class="hold" id="hold">Pick a time. Pay now holds it for 5 minutes while the card form is open. Coming back does not start the timer again.</p>
+        <div id="payChoice" hidden>
+            <p class="hold" id="pickedLine"></p>
+            <button class="go" id="payNow" type="button">Pay now</button>
+            <button class="go ghost" id="payLater" type="button">Pay later</button>
+            <div id="codeBox" hidden>
+                <p class="lead">Enter the code we gave you. The time is held and you pay when you collect.</p>
+                <label for="laterCode">Code</label>
+                <input id="laterCode" type="password" autocomplete="off" inputmode="text">
+                <p class="auth-msg" id="codeMsg"></p>
+                <button class="go" id="codeGo" type="button">Hold this time</button>
+            </div>
+        </div>
         <div id="totals"></div>
         <div id="cardBox" hidden>
             <div id="cardMount"></div>
@@ -605,15 +622,26 @@
                 const btn = document.createElement("button");
                 btn.type = "button";
                 const mine = held === slot && left > 0;
+                const chosen = picked === slot && !mine;
                 const passed = slotPassed(slot) && !mine;
                 const gone = taken.has(slot) && !mine;
-                btn.className = "slot" + (mine ? " on" : "") + ((passed || gone) ? " taken" : "");
+                btn.className = "slot" + ((mine || chosen) ? " on" : "") + ((passed || gone) ? " taken" : "");
                 const mins = mine ? Math.floor(left / 60) : 0;
                 const secs = mine ? left % 60 : 0;
                 btn.innerHTML = clock(slot) + "<small>" + (passed ? "Gone" : gone ? "Taken" : mine ? ("Held " + mins + ":" + String(secs).padStart(2, "0")) : "Free") + "</small>";
-                if (!passed && !gone) btn.onclick = () => takeSlot(slot);
+                if (!passed && !gone) btn.onclick = () => selectSlot(slot);
                 root.appendChild(btn);
             });
+            const choice = document.getElementById("payChoice");
+            const still = picked && shownSlots().indexOf(picked) !== -1 && !(slotPassed(picked) && !(held === picked && left > 0)) && !(taken.has(picked) && !(held === picked && left > 0));
+            if (!still) {
+                picked = "";
+                if (choice) choice.hidden = true;
+            } else if (choice) {
+                choice.hidden = false;
+                const line = document.getElementById("pickedLine");
+                if (line) line.textContent = clock(picked) + " selected. Pay now on card, or pay later with your code.";
+            }
             const note = document.getElementById("hold");
             if (note && !(held && left > 0) && !shownSlots().some((slot) => !slotPassed(slot))) {
                 note.textContent = "Tonight's times have all gone.";
@@ -723,6 +751,58 @@
                 showOrder(paid, "paid", true);
             } else showOrder(paid, "failed", false);
         }
+        let picked = "";
+        function selectSlot(slot) {
+            if (!ordersOpen || booking || !sessionUser) return;
+            if (shownSlots().indexOf(slot) === -1) {
+                document.getElementById("hold").textContent = "That time is not on tonight.";
+                return;
+            }
+            if (slotPassed(slot) && !(held === slot && left > 0)) {
+                document.getElementById("hold").textContent = "That time has already gone. Pick a later one.";
+                drawSlots();
+                return;
+            }
+            if (foodPence() < MIN_PENCE) {
+                document.getElementById("hold").textContent = "Minimum order is £15 to book a time. Add more food first.";
+                return;
+            }
+            if (taken.has(slot) && !(held === slot && left > 0)) return;
+            picked = slot;
+            const codeBox = document.getElementById("codeBox");
+            if (codeBox) codeBox.hidden = true;
+            const msg = document.getElementById("codeMsg");
+            if (msg) msg.textContent = "";
+            drawSlots();
+        }
+        async function sendLater() {
+            if (!picked || booking) return;
+            const code = document.getElementById("laterCode").value;
+            const msg = document.getElementById("codeMsg");
+            if (!String(code || "").trim()) {
+                msg.textContent = "Type the code.";
+                return;
+            }
+            booking = true;
+            msg.textContent = "Checking the code...";
+            const items = Object.entries(basket).map(([id, n]) => ({ id, qty: n }));
+            const data = await payCall({ action: "later", slot: picked, items, code });
+            booking = false;
+            if (!data || data.error || !data.ok) {
+                msg.textContent = (data && data.error) || "That code is not right.";
+                await loadTaken();
+                drawSlots();
+                return;
+            }
+            picked = "";
+            document.getElementById("payChoice").hidden = true;
+            document.getElementById("laterCode").value = "";
+            clearBasket();
+            closeSheet();
+            await loadTaken();
+            draw();
+            showOrder(data, "held", true);
+        }
         async function takeSlot(slot) {
             if (!ordersOpen || booking || !sessionUser) return;
             if (shownSlots().indexOf(slot) === -1) {
@@ -793,6 +873,17 @@
             document.getElementById("bg").classList.remove("open");
             document.getElementById("sheet").classList.remove("open");
         }
+        document.getElementById("payNow").onclick = function () { if (picked) takeSlot(picked); };
+        document.getElementById("payLater").onclick = function () {
+            const box = document.getElementById("codeBox");
+            box.hidden = false;
+            document.getElementById("codeMsg").textContent = "";
+            document.getElementById("laterCode").focus();
+        };
+        document.getElementById("codeGo").onclick = function () { sendLater(); };
+        document.getElementById("laterCode").addEventListener("keydown", function (event) {
+            if (event.key === "Enter") { event.preventDefault(); sendLater(); }
+        });
         document.getElementById("bar").onclick = openSheet;
         document.getElementById("bg").onclick = closeSheet;
         document.getElementById("chipBg").onclick = closeChips;
@@ -909,6 +1000,47 @@
                 box.scrollIntoView({ block: "start" });
                 return;
             }
+            if (mode === "held" && paid && paid.ok) {
+                kicker.textContent = "Time held";
+                title.textContent = "Pickup at " + clock(paid.slot || "");
+                body.textContent = "This time is yours. Pay when you collect. No card payment was taken.";
+                (paid.items || []).forEach((item) => {
+                    const row = document.createElement("div");
+                    row.className = "line";
+                    const left = document.createElement("span");
+                    left.textContent = item.qty + " × " + withKids("", item.name);
+                    const right = document.createElement("span");
+                    right.textContent = money((item.qty || 1) * (item.pence || 0));
+                    row.append(left, right);
+                    list.appendChild(row);
+                });
+                const total = document.createElement("div");
+                total.className = "line";
+                const totalName = document.createElement("strong");
+                totalName.textContent = "To pay on collection";
+                const totalPrice = document.createElement("strong");
+                totalPrice.textContent = money(paid.total_pence || 0);
+                total.append(totalName, totalPrice);
+                list.appendChild(total);
+                if (paid.name) who.textContent = paid.name + (paid.address ? " · " + paid.address : "");
+                if (remember) {
+                    try {
+                        sessionStorage.setItem("brothers-order", JSON.stringify({
+                            at: Date.now(),
+                            ok: true,
+                            mode: "held",
+                            slot: paid.slot,
+                            name: paid.name || "",
+                            address: paid.address || "",
+                            items: paid.items || [],
+                            total_pence: paid.total_pence || 0,
+                            saved: true
+                        }));
+                    } catch (err) {}
+                }
+                box.scrollIntoView({ block: "start" });
+                return;
+            }
             if (mode !== "paid" || !paid || !paid.ok) {
                 kicker.textContent = "Not paid";
                 title.textContent = "The card payment did not finish";
@@ -951,7 +1083,8 @@
                         address: paid.address || "",
                         items: paid.items || [],
                         total_pence: paid.total_pence || 0,
-                        saved: paid.saved !== false
+                        saved: paid.saved !== false,
+                        mode: "paid"
                     }));
                 } catch (err) {}
             }
@@ -963,7 +1096,7 @@
                 if (!raw) return;
                 const saved = JSON.parse(raw);
                 if (!saved || !saved.ok || Date.now() - Number(saved.at) > 3 * 60 * 60 * 1000) return;
-                showOrder(saved, "paid", false);
+                showOrder(saved, saved.mode === "held" ? "held" : "paid", false);
             } catch (err) {}
         }
         function hideOrder() {

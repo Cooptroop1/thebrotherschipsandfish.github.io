@@ -201,7 +201,10 @@
                     later = (data.orders || []).filter((order) => order.status === "held");
                 }
             } catch (err) {}
-            const rows = today.filter((order) => order.status !== "cancelled" && order.slot !== "ORDERS-OPEN" && order.slot !== "ORDERS-OPEN-HALF" && String(order.id).indexOf("stripe:") !== 0).concat(later);
+            const rows = today.filter((order) => order.status !== "cancelled" && order.slot !== "ORDERS-OPEN" && order.slot !== "ORDERS-OPEN-HALF" && String(order.id).indexOf("stripe:") !== 0);
+            const seen = {};
+            rows.forEach((order) => { seen[order.slot] = true; });
+            later.forEach((order) => { if (!seen[order.slot]) rows.push(order); });
             rows.sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
             const list = document.getElementById("list");
             list.innerHTML = "";
@@ -415,7 +418,7 @@
                 email: email,
                 options: {
                     shouldCreateUser: false,
-                    emailRedirectTo: "https://thebrotherschipsandfish.co.uk/admin.html?v=23"
+                    emailRedirectTo: "https://thebrotherschipsandfish.co.uk/admin.html?v=25"
                 }
             });
             note.textContent = error

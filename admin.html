@@ -75,8 +75,8 @@
         const SLOTS = ["4:30","4:45","5:00","5:15","5:30","5:45","6:00","6:15","6:30","6:45","7:00"];
         const CLOCK = {"4:30":"16:30","4:45":"16:45","5:00":"17:00","5:15":"17:15","5:30":"17:30","5:45":"17:45","6:00":"18:00","6:15":"18:15","6:30":"18:30","6:45":"18:45","7:00":"19:00"};
         function clock(slot) { return CLOCK[slot] || slot || ""; }
-        const NEXT = { "held": "cooking", "new": "cooking", "cooking": "ready", "ready": "collected" };
-        const LABEL = { "held": "Start it", "new": "Start it", "cooking": "Ready", "ready": "Collected" };
+        const NEXT = { "held": "cooking", "unpaid": "cooking", "new": "cooking", "cooking": "ready", "ready": "collected" };
+        const LABEL = { "held": "Start it", "unpaid": "Start it", "new": "Start it", "cooking": "Ready", "ready": "Collected" };
         let db = null;
         let timer = 0;
         function londonDate() {
@@ -187,7 +187,7 @@
             }
             const today = data || [];
             await freeStuck(today);
-            const rows = today.filter((order) => order.status !== "unpaid" && order.status !== "cancelled" && order.slot !== "ORDERS-OPEN" && order.slot !== "ORDERS-OPEN-HALF" && String(order.id).indexOf("stripe:") !== 0);
+            const rows = today.filter((order) => order.status !== "cancelled" && order.slot !== "ORDERS-OPEN" && order.slot !== "ORDERS-OPEN-HALF" && String(order.id).indexOf("stripe:") !== 0);
             rows.sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
             const list = document.getElementById("list");
             list.innerHTML = "";
@@ -198,7 +198,7 @@
             rows.forEach((order) => {
                 const card = document.createElement("article");
                 card.className = "card" + (order.status === "collected" ? " done" : "");
-                card.innerHTML = "<div class='split'><div><p class='slot'>" + esc(clock(order.slot)) + "</p><p class='muted'>" + esc(order.status === "held" ? "Pay later" : order.status) + "</p><p style='margin-top:8px'>" + itemsOf(order) + "</p><p class='muted'>" + money(order.total_pence) + "</p></div><div class='person'><h2>" + esc(order.name) + "</h2><p>" + esc(order.address) + "</p></div></div>";
+                card.innerHTML = "<div class='split'><div><p class='slot'>" + esc(clock(order.slot)) + "</p><p class='muted'>" + esc((order.status === "held" || order.status === "unpaid" || String(order.name || "").indexOf("Pay later") === 0) ? "Pay later" : order.status) + "</p><p style='margin-top:8px'>" + itemsOf(order) + "</p><p class='muted'>" + money(order.total_pence) + "</p></div><div class='person'><h2>" + esc(order.name) + "</h2><p>" + esc(order.address) + "</p></div></div>";
                 const actions = document.createElement("div");
                 actions.className = "actions";
                 if (NEXT[order.status] && String(order.id).indexOf("stripe:") !== 0) {
@@ -338,7 +338,7 @@
                 button.disabled = false;
                 return;
             }
-            const live = (data || []).filter((order) => order.status !== "cancelled" && order.status !== "unpaid" && order.slot !== "ORDERS-OPEN" && order.slot !== "ORDERS-OPEN-HALF");
+            const live = (data || []).filter((order) => order.status !== "cancelled" && order.slot !== "ORDERS-OPEN" && order.slot !== "ORDERS-OPEN-HALF");
             for (let i = 0; i < live.length; i++) {
                 const failed = await saveStatus(live[i].id, "cancelled", live[i].slot);
                 if (failed) {

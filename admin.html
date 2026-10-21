@@ -36,7 +36,7 @@
 </head>
 <body>
     <div class="wrap">
-        <p><a href="/order.html?v=28">Back to the menu</a></p>
+        <p><a href="/order.html?v=30">Back to the menu</a></p>
         <h1>Today's queue</h1>
         <p class="lead" id="note" style="color:#e8c96a;font-size:1.15rem">Log in with the staff email.</p>
         <div id="login">
@@ -75,8 +75,8 @@
         const SLOTS = ["4:30","4:45","5:00","5:15","5:30","5:45","6:00","6:15","6:30","6:45","7:00"];
         const CLOCK = {"4:30":"16:30","4:45":"16:45","5:00":"17:00","5:15":"17:15","5:30":"17:30","5:45":"17:45","6:00":"18:00","6:15":"18:15","6:30":"18:30","6:45":"18:45","7:00":"19:00"};
         function clock(slot) { return CLOCK[slot] || slot || ""; }
-        const NEXT = { "new": "cooking", "cooking": "ready", "ready": "collected" };
-        const LABEL = { "new": "Start it", "cooking": "Ready", "ready": "Collected" };
+        const NEXT = { "held": "cooking", "new": "cooking", "cooking": "ready", "ready": "collected" };
+        const LABEL = { "held": "Start it", "new": "Start it", "cooking": "Ready", "ready": "Collected" };
         let db = null;
         let timer = 0;
         function londonDate() {
@@ -198,7 +198,7 @@
             rows.forEach((order) => {
                 const card = document.createElement("article");
                 card.className = "card" + (order.status === "collected" ? " done" : "");
-                card.innerHTML = "<div class='split'><div><p class='slot'>" + esc(clock(order.slot)) + "</p><p class='muted'>" + esc(order.status) + "</p><p style='margin-top:8px'>" + itemsOf(order) + "</p><p class='muted'>" + money(order.total_pence) + "</p></div><div class='person'><h2>" + esc(order.name) + "</h2><p>" + esc(order.address) + "</p></div></div>";
+                card.innerHTML = "<div class='split'><div><p class='slot'>" + esc(clock(order.slot)) + "</p><p class='muted'>" + esc(order.status === "held" ? "Pay later" : order.status) + "</p><p style='margin-top:8px'>" + itemsOf(order) + "</p><p class='muted'>" + money(order.total_pence) + "</p></div><div class='person'><h2>" + esc(order.name) + "</h2><p>" + esc(order.address) + "</p></div></div>";
                 const actions = document.createElement("div");
                 actions.className = "actions";
                 if (NEXT[order.status] && String(order.id).indexOf("stripe:") !== 0) {

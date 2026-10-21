@@ -36,7 +36,7 @@
 </head>
 <body>
     <div class="wrap">
-        <p><a href="/order.html?v=33">Back to the menu</a></p>
+        <p><a href="/order.html?v=34">Back to the menu</a></p>
         <h1>Today's queue</h1>
         <p class="lead" id="note" style="color:#e8c96a;font-size:1.15rem">Log in with the staff email.</p>
         <div id="login">
@@ -70,7 +70,7 @@
         <p id="clearRow" hidden style="margin:14px 0"><button id="clearDay" type="button">Cancel all and clear the board</button></p>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="order-config.js?v=4"></script>
+    <script src="order-config.js?v=5"></script>
     <script>
         const SLOTS = ["4:30","4:45","5:00","5:15","5:30","5:45","6:00","6:15","6:30","6:45","7:00"];
         const CLOCK = {"4:30":"16:30","4:45":"16:45","5:00":"17:00","5:15":"17:15","5:30":"17:30","5:45":"17:45","6:00":"18:00","6:15":"18:15","6:30":"18:30","6:45":"18:45","7:00":"19:00"};
@@ -187,7 +187,21 @@
             }
             const today = data || [];
             await freeStuck(today);
-            const rows = today.filter((order) => order.status !== "cancelled" && order.slot !== "ORDERS-OPEN" && order.slot !== "ORDERS-OPEN-HALF" && String(order.id).indexOf("stripe:") !== 0);
+            let later = [];
+            try {
+                const cfg = window.ORDER_CONFIG || {};
+                const session = (await client().auth.getSession()).data.session;
+                if (cfg.payUrl && session) {
+                    const res = await fetch(cfg.payUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+                        body: JSON.stringify({ action: "queue" })
+                    });
+                    const data = await res.json();
+                    later = (data.orders || []).filter((order) => order.status === "held");
+                }
+            } catch (err) {}
+            const rows = today.filter((order) => order.status !== "cancelled" && order.slot !== "ORDERS-OPEN" && order.slot !== "ORDERS-OPEN-HALF" && String(order.id).indexOf("stripe:") !== 0).concat(later);
             rows.sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
             const list = document.getElementById("list");
             list.innerHTML = "";
@@ -208,18 +222,29 @@
                     button.onclick = () => setStatus(order.id, NEXT[order.status], order.slot);
                     actions.appendChild(button);
                 }
-                if (String(order.id).indexOf("stripe:") !== 0) {
-                    const cancel = document.createElement("button");
-                    cancel.type = "button";
-                    cancel.textContent = "Cancel";
-                    cancel.onclick = () => setStatus(order.id, "cancelled", order.slot);
-                    actions.appendChild(cancel);
-                }
+                const cancel = document.createElement("button");
+                cancel.type = "button";
+                cancel.textContent = "Cancel";
+                cancel.onclick = () => setStatus(order.id, "cancelled", order.slot);
+                actions.appendChild(cancel);
                 card.appendChild(actions);
                 list.appendChild(card);
             });
         }
         async function setStatus(id, status, slot) {
+            if (String(id).indexOf("stripe:") === 0) {
+                const cfg = window.ORDER_CONFIG || {};
+                const session = (await client().auth.getSession()).data.session;
+                if (!cfg.payUrl || !session) return;
+                await fetch(cfg.payUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+                    body: JSON.stringify({ action: "release", session_id: id })
+                });
+                document.getElementById("note").textContent = (slot ? clock(slot) : "That time") + " is free again.";
+                loadOrders();
+                return;
+            }
             const error = await saveStatus(id, status, slot);
             if (error) {
                 document.getElementById("note").textContent = error.message || "Could not update that order.";

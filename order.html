@@ -169,10 +169,10 @@
             <span class="chip">Pickup</span>
             <span class="chip">16:30–19:00</span>
             <span class="chip" id="gapChip">Every 15 min</span>
-            <span class="chip">£10 minimum</span>
+            <span class="chip">£15 minimum</span>
         </div>
         <h1>Order for pickup</h1>
-        <p class="lead">Tap + to add. The basket has to be at least £10 before a time can be booked. Then pick a pickup time. That time is taken straight away.</p>
+        <p class="lead">Tap + to add. The basket has to be at least £15 before a time can be booked. Then pick a pickup time. That time is taken straight away.</p>
         <div id="shop">
         <p class="lead" id="bookedNote"></p>
         <div class="layout">
@@ -312,7 +312,7 @@
         let checkout = null;
         let cardSession = "";
         const money = (p) => "£" + (p / 100).toFixed(2);
-        const MIN_PENCE = 1000;
+        const MIN_PENCE = 1500;
         function withKids(id, name) {
             const text = String(name || "");
             if (/kids/i.test(text)) return text;
@@ -594,7 +594,7 @@
             const food = foodPence();
             const short = Math.max(0, MIN_PENCE - food);
             const bitsOut = bits.join("") + "<div class='line'><strong>To pay</strong><strong>" + money(food) + "</strong></div>";
-            if (short) return bitsOut + "<p class='empty'>Add " + money(short) + " more. £10 minimum to book a time.</p>";
+            if (short) return bitsOut + "<p class='empty'>Add " + money(short) + " more. £15 minimum to book a time.</p>";
             return bitsOut;
         }
         function draw() {
@@ -764,7 +764,7 @@
                 return;
             }
             if (foodPence() < MIN_PENCE) {
-                document.getElementById("hold").textContent = "Minimum order is £10 to book a time. Add more food first.";
+                document.getElementById("hold").textContent = "Minimum order is £15 to book a time. Add more food first.";
                 return;
             }
             if (taken.has(slot) && !(held === slot && left > 0)) return;
@@ -815,7 +815,7 @@
                 return;
             }
             if (foodPence() < MIN_PENCE) {
-                document.getElementById("hold").textContent = "Minimum order is £10 to book a time. Add more food first.";
+                document.getElementById("hold").textContent = "Minimum order is £15 to book a time. Add more food first.";
                 return;
             }
             if (taken.has(slot) && !(held === slot && left > 0)) return;

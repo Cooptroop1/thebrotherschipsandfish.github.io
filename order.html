@@ -137,10 +137,8 @@
             <div id="joinFields" hidden>
                 <label for="loginName">Name</label>
                 <input id="loginName" autocomplete="name">
-                <label for="loginAddress">Address</label>
-                <textarea id="loginAddress" rows="2" autocomplete="street-address"></textarea>
-                <label for="loginPostcode">Postcode</label>
-                <input id="loginPostcode" autocomplete="postal-code">
+                <label for="loginPhone">Phone number</label>
+                <input id="loginPhone" type="tel" autocomplete="tel" inputmode="tel">
             </div>
             <label for="loginEmail">Email</label>
             <input id="loginEmail" type="email" autocomplete="email">
@@ -1124,7 +1122,7 @@
                     email: email,
                     options: {
                         shouldCreateUser: false,
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=28"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=38"
                     }
                 });
                 if (error) {
@@ -1162,19 +1160,18 @@
                     return;
                 }
                 const name = document.getElementById("loginName").value.trim();
-                const address = document.getElementById("loginAddress").value.trim();
-                const postcode = document.getElementById("loginPostcode").value.trim().toUpperCase();
-                if (!name || !address || !postcode || !email || password.length < 6) {
-                    authSay("Name, address, postcode, email and a password of at least 6 characters.");
+                const phone = document.getElementById("loginPhone").value.trim();
+                const digits = phone.replace(/\D/g, "");
+                if (!name || digits.length < 10 || !email || password.length < 6) {
+                    authSay("Name, a phone number, email and a password of at least 6 characters.");
                     return;
                 }
-                const full = address + ", " + postcode;
                 const { data, error } = await sb().auth.signUp({
                     email,
                     password,
                     options: {
-                        data: { name, address: full, postcode },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=28"
+                        data: { name, address: phone, phone },
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=38"
                     }
                 });
                 if (error) {
@@ -1188,7 +1185,7 @@
                     return;
                 }
                 sessionUser = data.session.user;
-                await sb().from("profiles").update({ name, address: full }).eq("id", sessionUser.id);
+                await sb().from("profiles").update({ name, address: phone }).eq("id", sessionUser.id);
                 await afterLogin();
             };
             if (!db) {

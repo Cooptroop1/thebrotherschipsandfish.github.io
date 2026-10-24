@@ -99,12 +99,17 @@
     .stats { display: grid; gap: 8px; }
     .stat { display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 8px; }
     .stat b { font-family: Fraunces, Georgia, serif; font-size: 1.6rem; }
-    ul.plain { margin: 0; padding-left: 18px; }
+    .board { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .board li { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+    .auth { display: grid; gap: 8px; max-width: 360px; margin-top: 8px; }
+    .auth label { font-size: 0.8rem; color: #b9a894; }
+    .auth input { min-height: 44px; border-radius: 8px; border: 1px solid var(--gold); background: #1c1612; color: #f3efe6; padding: 8px 10px; }
     .box-item { text-align: left; }
   </style>
 </head>
 <body>
   <div id="app"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const SPEC = { msPerGameMin: 1800, msPerFrySec: 200, perfectFrom: 110, perfectTo: 140, burnAt: 150 };
     const OPEN = 16 * 60;
@@ -183,7 +188,7 @@
         stock, holding: emptyHold(), box: emptyBox(), coated: null, armed: null,
         orders: [dealOne(), dealOne()], index: 0,
         served: 0, wasted: 0, mistakes: 0, score: 0,
-        note: "4 o'clock. First ticket.", tone: "info", armReset: false
+        note: "4 o'clock. First ticket.", tone: "info", armReset: false, startId: ""
       };
     }
 
@@ -252,13 +257,93 @@
       return h > 0 ? h + "h " + m + "m to close" : m + "m to close";
     }
 
+    const SB_URL = "https://opuwziqwkuterpvpsmpc.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wdXd6aXF3a3V0ZXJwdnBzbXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNDcyNTIsImV4cCI6MjEwNzkyMzI1Mn0.mT-_M76QMiZCnOoI2E3XtxdAbxwIns-hLCsFPlnbPrM";
+    const FRY_URL = "https://brothers-pay.vercel.app/api/fry";
+    let sb = null;
+    let session = null;
+    let accountName = "";
+    let authMode = "login";
+    let authMsg = "";
+    let boardRows = [];
+    let boardNote = "";
+
+    function db() {
+      if (!window.supabase) return null;
+      if (!sb) sb = window.supabase.createClient(SB_URL, SB_KEY);
+      return sb;
+    }
+    function cleanName(raw) {
+      const name = String(raw || "").replace(/\s+/g, " ").trim();
+      if (name.length < 2 || name.length > 16) return "";
+      if (!/^[A-Za-z0-9 ]+$/.test(name)) return "";
+      return name;
+    }
+    async function loadAccount() {
+      const client = db();
+      if (!client) return;
+      const got = await client.auth.getSession();
+      session = got.data.session || null;
+      accountName = "";
+      if (!session) return;
+      const profile = await client.from("profiles").select("name").eq("id", session.user.id).maybeSingle();
+      accountName = cleanName(profile.data && profile.data.name) || cleanName(session.user.user_metadata && session.user.user_metadata.name) || "";
+    }
+    async function loadBoard() {
+      const res = await fetch(FRY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "board" })
+      });
+      const data = await res.json();
+      boardRows = (data && data.rows) || [];
+      if (data && data.error) boardNote = data.error;
+    }
+
     function startFry() {
-      const stop = state.stop;
-      state = fresh();
-      state.stop = stop;
-      state.phase = "play";
-      state.note = "4 o'clock. First ticket.";
+      const client = db();
+      if (!session || !client) {
+        authMsg = "Log in first. Same email and password as ordering.";
+        state.phase = "intro";
+        paint(true);
+        return;
+      }
+      const typed = document.getElementById("pickName");
+      const name = cleanName(accountName) || cleanName(typed && typed.value);
+      if (!name) {
+        authMsg = "Pick a board name. 2 to 16 letters or numbers.";
+        state.phase = "intro";
+        paint(true);
+        return;
+      }
+      accountName = name;
+      authMsg = "Opening the fry...";
       paint(true);
+      const slot = "frystart-" + (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+      client.from("orders").insert({
+        user_id: session.user.id,
+        name: name,
+        address: "",
+        slot: slot,
+        day: "2099-01-01",
+        items: [],
+        total_pence: 0,
+        status: "unpaid"
+      }).select("id").single().then(({ data, error }) => {
+        if (error || !data) {
+          authMsg = (error && error.message) || "Could not start the fry.";
+          state.phase = "intro";
+          paint(true);
+          return;
+        }
+        const stop = state.stop;
+        state = fresh();
+        state.stop = stop;
+        state.phase = "play";
+        state.startId = data.id;
+        state.note = "4 o'clock. First ticket.";
+        paint(true);
+      });
     }
     function armPlain(id) {
       if (state.stock[id] < 1) { say("No " + LABELS[id].toLowerCase() + " left.", "bad"); paint(true); return; }
@@ -370,10 +455,30 @@
       paint(true);
     }
     function finish() {
+      if (state.phase === "done") return;
       state.phase = "done";
       state.clock = END;
+      boardNote = state.served > 0 ? "Saving your score..." : "Box at least one order to get on the board.";
       say(state.served > 0 ? state.served + " boxed. Hatch is shut." : "Shift's over. Hatch is shut.", state.served > 0 ? "info" : "bad");
       paint(true);
+      const token = session && session.access_token;
+      const job = state.served > 0 && token && state.startId
+        ? fetch(FRY_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+            body: JSON.stringify({ action: "score", start_id: state.startId, orders: state.served, score: state.score, name: accountName })
+          }).then((res) => res.json())
+        : Promise.resolve(null);
+      job.then((data) => {
+        if (data && data.rows) boardRows = data.rows;
+        if (data && data.error) boardNote = data.error;
+        else if (data && data.ok) boardNote = "On the board.";
+        if (!data || !data.rows) return loadBoard();
+      }).catch(() => {
+        boardNote = "Could not save that score.";
+      }).then(() => {
+        if (state.phase === "done") paint(true);
+      });
     }
 
     function esc(s) {
@@ -393,7 +498,19 @@
           '<p class="kicker">Mobile fish and chips · Norfolk</p>' +
           '<h1>On the fryer</h1>' +
           '<p>No prep. The van is set and the range is hot. From 4 until 7. Three pans. 2:00 is perfect.</p>' +
-          '<p><button class="btn gold" data-act="start">Start frying</button></p>' +
+          (session
+            ? '<p>Signed in' + (accountName ? " as " + esc(accountName) : "") + '.</p>' +
+              (accountName ? "" : '<div class="auth"><label for="pickName">Board name</label><input id="pickName" maxlength="16" autocomplete="nickname"></div>') +
+              '<p><button class="btn gold" data-act="start">Start frying</button></p>' +
+              '<p><button class="btn alt" data-act="logout">Log out</button></p>'
+            : '<div class="auth">' +
+              (authMode === "join" ? '<label for="loginName">Name</label><input id="loginName" maxlength="16" autocomplete="name"><label for="loginPhone">Phone number</label><input id="loginPhone" type="tel" autocomplete="tel">' : "") +
+              '<label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="email">' +
+              '<label for="loginPass">Password</label><input id="loginPass" type="password" autocomplete="' + (authMode === "join" ? "new-password" : "current-password") + '">' +
+              '<button class="btn gold" data-act="auth">' + (authMode === "join" ? "Sign up" : "Log in") + '</button>' +
+              '<button class="btn alt" data-act="mode">' + (authMode === "join" ? "Have an account? Log in" : "Need an account? Sign up") + '</button>' +
+              '</div>') +
+          (authMsg ? '<p class="hint">' + esc(authMsg) + '</p>' : "") +
           '<p><a class="back" href="/">Back to the van</a></p>' +
           '</div></div>';
       }
@@ -435,7 +552,13 @@
           '<div class="stat"><span>Boxes sent back</span><b>' + state.mistakes + '</b></div></div>' +
           '<button class="btn" data-act="start">Fry again</button>' +
           '<a class="btn alt" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none" href="https://clover-gem-acre-timber.grok.me/">Try the extended shift</a>' +
-          '<p class="hint">The extended shift is the full day: prep from 11, the drive, then the fry.</p></section>'
+          '<p class="hint">The extended shift is the full day. It does not go on this board.</p>' +
+          '<h2>Leaderboard</h2>' +
+          (boardRows.length
+            ? '<ol class="board">' + boardRows.map((row, i) => '<li><span>' + (i + 1) + '. ' + esc(row.name) + '</span><b>' + row.orders + ' · ' + row.score + '</b></li>').join("") + '</ol>'
+            : '<p class="hint">No scores yet.</p>') +
+          (boardNote ? '<p class="hint">' + esc(boardNote) + '</p>' : '') +
+          '</section>'
         : '<section><h2>Ticket ' + (state.index + 1) + '</h2><p class="hint">' + (next ? "Next: " + esc(next.title) : "Keep going until 7.") + '</p>' +
           '<h3 class="display" style="margin:0;font-size:1.6rem">' + esc(order.title) + '</h3><ul class="plain">' + lines(order).map((l) => "<li>" + esc(l) + "</li>").join("") + '</ul>' +
           (short ? '<p class="bad">' + esc(short) + '</p>' : '') + '</section>' +
@@ -498,7 +621,50 @@
       const el = event.target.closest("[data-act]");
       if (!el || el.disabled) return;
       const act = el.getAttribute("data-act");
-      if (act === "start" || act === "over") { state = fresh(); if (act === "start") startFry(); else { state.phase = "intro"; paint(true); } return; }
+      if (act === "mode") { authMode = authMode === "join" ? "login" : "join"; authMsg = ""; paint(true); return; }
+      if (act === "logout") {
+        const client = db();
+        if (client) client.auth.signOut();
+        session = null;
+        accountName = "";
+        authMsg = "";
+        state.phase = "intro";
+        paint(true);
+        return;
+      }
+      if (act === "auth") {
+        const client = db();
+        const email = (document.getElementById("loginEmail") || {}).value || "";
+        const password = (document.getElementById("loginPass") || {}).value || "";
+        if (!client) { authMsg = "Login is not available."; paint(true); return; }
+        if (authMode === "login") {
+          client.auth.signInWithPassword({ email: email.trim(), password: password }).then(async ({ error }) => {
+            if (error) { authMsg = error.message; paint(true); return; }
+            authMsg = "";
+            await loadAccount();
+            paint(true);
+          });
+          return;
+        }
+        const name = cleanName((document.getElementById("loginName") || {}).value);
+        const phone = String((document.getElementById("loginPhone") || {}).value || "").trim();
+        if (!name || phone.replace(/\D/g, "").length < 10 || password.length < 6) {
+          authMsg = "Name, a phone number, email and a password of at least 6 characters.";
+          paint(true);
+          return;
+        }
+        client.auth.signUp({ email: email.trim(), password: password, options: { data: { name: name, address: phone, phone: phone } } }).then(async ({ data, error }) => {
+          if (error) { authMsg = error.message; paint(true); return; }
+          if (!data.session) { authMsg = "Account made. Check that email, then log in."; authMode = "login"; paint(true); return; }
+          session = data.session;
+          accountName = name;
+          await client.from("profiles").update({ name: name, address: phone }).eq("id", session.user.id);
+          authMsg = "";
+          paint(true);
+        });
+        return;
+      }
+      if (act === "start" || act === "over") { if (act === "start") startFry(); else { state = fresh(); state.phase = "intro"; paint(true); } return; }
       if (state.phase !== "play" && act !== "start") return;
       if (act === "arm") {
         const id = el.getAttribute("data-id");
@@ -539,6 +705,7 @@
       requestAnimationFrame(loop);
     }
     paint(true);
+    loadAccount().then(() => { if (state.phase === "intro") paint(true); });
     requestAnimationFrame(loop);
   </script>
 </body>

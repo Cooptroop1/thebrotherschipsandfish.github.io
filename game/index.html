@@ -3,27 +3,543 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>The game | The Brothers Chips and Fish</title>
+  <title>The fry | The Brothers Chips and Fish</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,650&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    html, body { margin: 0; height: 100%; background: #120e0b; }
-    iframe { display: block; width: 100%; height: 100%; border: 0; background: #120e0b; }
-    a.back {
-      position: fixed;
-      left: 12px;
-      bottom: 12px;
-      z-index: 5;
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: #1c1612;
-      color: #e8c96a;
-      font: 600 13px/1 system-ui, sans-serif;
-      text-decoration: none;
-      border: 1px solid #e8c96a;
+    :root {
+      --ink: #1c1612;
+      --paper: #f6f1e8;
+      --muted: #6d6258;
+      --soft: #8a7d70;
+      --line: #e4d8c4;
+      --gold: #c9a227;
+      --bad: #9d2c2c;
+      --ok: #2f6b45;
+      --night: #120e0b;
     }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--paper); color: var(--ink); font-family: Outfit, system-ui, sans-serif; }
+    button, a { font: inherit; }
+    h1, h2, h3, .display { font-family: Fraunces, Georgia, serif; font-weight: 560; }
+    .wrap { width: min(720px, 100%); margin: 0 auto; padding: 0 16px; }
+    .top { border-bottom: 1px solid var(--line); background: var(--paper); position: sticky; top: 0; z-index: 2; }
+    .top-row { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0 4px; }
+    .clock { font-size: 1.7rem; line-height: 1; font-variant-numeric: tabular-nums; }
+    .muted { color: var(--muted); }
+    .soft { color: var(--soft); }
+    .bad { color: var(--bad); }
+    .ok { color: var(--ok); }
+    .note { margin: 0 0 10px; font-size: 0.95rem; }
+    main { display: grid; gap: 14px; padding: 16px 0 40px; }
+    section { display: grid; gap: 10px; }
+    h2 { margin: 0; font-size: 1.35rem; }
+    .hint { margin: 0; color: var(--soft); font-size: 0.92rem; }
+    .btn {
+      min-height: 44px;
+      border-radius: 999px;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: var(--paper);
+      font-weight: 700;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+    .btn.alt { background: var(--paper); color: var(--ink); }
+    .btn.gold { background: var(--gold); color: var(--night); border-color: var(--gold); }
+    .btn:disabled { opacity: 0.45; cursor: default; }
+    .grid2 { display: grid; grid-cols: 2; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .choice, .sauce {
+      min-height: 64px;
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      border-radius: 8px;
+      padding: 8px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .choice.on, .sauce.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+    .choice b, .sauce b { display: block; }
+    .range {
+      overflow: hidden;
+      border-radius: 8px;
+      border: 1px solid #8b949c;
+      background: linear-gradient(#e4e8eb, #9aa3aa);
+      padding: 6px;
+    }
+    .hood { height: 28px; border-radius: 4px; margin-bottom: 6px; background: linear-gradient(#f8e7cf, #e39a52, #7a4524); }
+    .pans { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+    .pan { display: grid; gap: 4px; background: #242a30; color: #e8eef2; border-radius: 4px; padding: 4px; min-width: 0; }
+    .pan.head, .pan .meta { display: flex; justify-content: space-between; gap: 4px; font-size: 12px; }
+    .well { position: relative; height: 44px; overflow: hidden; border-radius: 4px; background: #101418; }
+    .oil { position: absolute; left: 4px; right: 4px; bottom: 4px; height: 24px; border-radius: 4px; background: #5c4a28; }
+    .oil.hot { background: #c6a15a; }
+    .well p { position: relative; margin: 0; padding: 2px 4px 0; font-size: 12px; white-space: nowrap; overflow: hidden; }
+    .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: #c47a3a; transform-origin: left; }
+    .pan button { min-height: 44px; border: 0; border-radius: 4px; font-weight: 700; cursor: pointer; }
+    .pan button.go { background: #2f6b45; color: #fff; }
+    .pan button.wait { background: #d5dbdf; color: var(--ink); }
+    .chipbox { background: #d5dbdf; color: var(--ink); }
+    .hero {
+      min-height: 70vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      background:
+        radial-gradient(1200px 400px at 20% 0%, rgba(201,162,39,0.35), transparent 50%),
+        linear-gradient(#2a2118, #120e0b);
+      color: #f3efe6;
+      padding: 28px 0 36px;
+    }
+    .hero h1 { font-size: clamp(2.6rem, 8vw, 4rem); line-height: 0.95; margin: 8px 0; max-width: 10ch; }
+    .kicker { color: var(--gold); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+    .back { color: #e8c96a; font-weight: 700; font-size: 0.85rem; text-decoration: none; }
+    .stats { display: grid; gap: 8px; }
+    .stat { display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 8px; }
+    .stat b { font-family: Fraunces, Georgia, serif; font-size: 1.6rem; }
+    ul.plain { margin: 0; padding-left: 18px; }
+    .box-item { text-align: left; }
   </style>
 </head>
 <body>
-  <iframe title="The shift game" src="https://clover-gem-acre-timber.grok.me/"></iframe>
-  <a class="back" href="https://thebrotherschipsandfish.co.uk/">Back to the van</a>
+  <div id="app"></div>
+  <script>
+    const SPEC = { msPerGameMin: 1800, msPerFrySec: 200, perfectFrom: 110, perfectTo: 140, burnAt: 150 };
+    const OPEN = 16 * 60;
+    const END = 19 * 60;
+    const LABELS = {
+      chips: "Chips", med: "Medium fish", large: "Large fish", sausage: "Sausage",
+      scampi: "Scampi", bigfoot: "Bigfoot sausage", nuggets: "Chicken nuggets",
+      spring: "Spring roll", mozz: "Mozzarella sticks", mars: "Battered Mars bar"
+    };
+    const SHORT = {
+      chips: "Chips", med: "Med", large: "Large", sausage: "Sausage",
+      scampi: "Scampi", bigfoot: "Bigfoot", nuggets: "Nuggets", spring: "Spring", mozz: "Mozz", mars: "Mars"
+    };
+    const ITEMS = Object.keys(LABELS);
+    const FROZEN = ["scampi", "bigfoot", "nuggets", "spring", "mozz", "mars"];
+    const PLAIN = ["chips", "sausage"].concat(FROZEN);
+    const SAUCE = { curry: "Curry sauce", peas: "Mushy peas", gravy: "Gravy" };
+    const STOPS = [
+      { id: "neatherd", name: "Dereham" },
+      { id: "rashes", name: "Rashes Green" },
+      { id: "swanton", name: "Swanton Morley" }
+    ];
+    const ORDERS = [
+      { title: "Large fish & chips", chips: 1, large: 1 },
+      { title: "Medium fish & chips", chips: 1, med: 1 },
+      { title: "Sausage, chips & curry", chips: 1, sausage: 1, curry: true },
+      { title: "Large fish, chips & mushy peas", chips: 1, large: 1, peas: true },
+      { title: "Chips & gravy", chips: 1, gravy: true },
+      { title: "Medium fish, sausage, chips & curry", chips: 1, med: 1, sausage: 1, curry: true },
+      { title: "Scampi & chips", chips: 1, scampi: 1 },
+      { title: "Bigfoot sausage, chips & curry", chips: 1, bigfoot: 1, curry: true },
+      { title: "Chicken nuggets & chips", chips: 1, nuggets: 1 },
+      { title: "Spring roll & chips", chips: 1, spring: 1 },
+      { title: "Mozzarella sticks & chips", chips: 1, mozz: 1 },
+      { title: "Battered Mars bar", mars: 1 }
+    ];
+
+    function ticket(partial) {
+      const order = { title: partial.title, curry: false, peas: false, gravy: false };
+      ITEMS.forEach((id) => { order[id] = partial[id] || 0; });
+      if (partial.curry) order.curry = true;
+      if (partial.peas) order.peas = true;
+      if (partial.gravy) order.gravy = true;
+      return order;
+    }
+    function dealOne() {
+      const raw = ORDERS[Math.floor(Math.random() * ORDERS.length)];
+      return ticket(raw);
+    }
+    function emptyBox() {
+      const box = { curry: false, peas: false, gravy: false };
+      ITEMS.forEach((id) => { box[id] = 0; });
+      return box;
+    }
+    function emptyHold() {
+      const h = {};
+      ITEMS.forEach((id) => { h[id] = 0; });
+      return h;
+    }
+    function fresh() {
+      const stock = emptyHold();
+      stock.chips = 24;
+      stock.med = 6;
+      stock.large = 6;
+      stock.sausage = 8;
+      stock.batter = 12;
+      stock.curry = 6;
+      stock.peas = 6;
+      stock.gravy = 6;
+      FROZEN.forEach((id) => { stock[id] = 4; });
+      return {
+        phase: "intro",
+        clock: OPEN,
+        stop: STOPS[Math.floor(Math.random() * STOPS.length)],
+        pans: [{ item: null, cook: 0 }, { item: null, cook: 0 }, { item: null, cook: 0 }],
+        stock, holding: emptyHold(), box: emptyBox(), coated: null, armed: null,
+        orders: [dealOne(), dealOne()], index: 0,
+        served: 0, wasted: 0, mistakes: 0, score: 0,
+        note: "4 o'clock. First ticket.", tone: "info", armReset: false
+      };
+    }
+
+    let state = fresh();
+    let sig = "";
+
+    function clockText(min) {
+      const total = Math.max(0, Math.floor(min));
+      const h24 = Math.floor(total / 60) % 24;
+      const mm = total % 60;
+      const ap = h24 >= 12 ? "pm" : "am";
+      const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+      return h12 + ":" + String(mm).padStart(2, "0") + ap;
+    }
+    function fryClock(sec) {
+      const s = Math.max(0, Math.floor(sec));
+      return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    }
+    function frySec(cook) { return cook / SPEC.msPerFrySec; }
+    function fryPoints(game) {
+      const g = Math.floor(game);
+      if (g < SPEC.perfectFrom || g > SPEC.perfectTo) return 0;
+      const dist = g - 120;
+      const span = dist < 0 ? 120 - SPEC.perfectFrom : SPEC.perfectTo - 120;
+      if (span <= 0) return 10;
+      const t = Math.min(1, Math.abs(dist) / span);
+      return Math.max(1, Math.round(10 * (1 - t)));
+    }
+    function say(msg, tone) { state.note = msg; state.tone = tone || "info"; }
+    function lines(order) {
+      const out = [];
+      ITEMS.forEach((id) => { if (order[id] > 0) out.push(order[id] > 1 ? order[id] + " " + LABELS[id] : LABELS[id]); });
+      if (order.curry) out.push("Curry sauce");
+      if (order.peas) out.push("Mushy peas");
+      if (order.gravy) out.push("Gravy");
+      return out;
+    }
+    function gap(order, box) {
+      for (const id of ITEMS) {
+        if (box[id] < order[id]) return LABELS[id] + " isn't in the box.";
+        if (box[id] > order[id]) return "No extra " + LABELS[id].toLowerCase() + " on this ticket.";
+      }
+      if (order.curry !== box.curry) return order.curry ? "Curry sauce goes on this one." : "No curry on this ticket.";
+      if (order.peas !== box.peas) return order.peas ? "Mushy peas go on this one." : "Hold the mushy peas.";
+      if (order.gravy !== box.gravy) return order.gravy ? "Gravy goes on this one." : "No gravy on this ticket.";
+      return "";
+    }
+    function cooking(id) {
+      return state.pans.filter((p) => p.item === id).length + (state.coated === id ? 1 : 0);
+    }
+    function shortage(order) {
+      for (const id of ITEMS) {
+        const have = state.stock[id] + state.holding[id] + state.box[id] + cooking(id);
+        if (have < order[id]) return "Not enough " + LABELS[id].toLowerCase() + " left for this ticket.";
+      }
+      if (order.curry && state.stock.curry + (state.box.curry ? 1 : 0) < 1) return "Curry sauce is out.";
+      if (order.peas && state.stock.peas + (state.box.peas ? 1 : 0) < 1) return "Mushy peas are out.";
+      if (order.gravy && state.stock.gravy + (state.box.gravy ? 1 : 0) < 1) return "Gravy is out.";
+      return "";
+    }
+    function leftLabel() {
+      const left = Math.max(0, END - Math.floor(state.clock));
+      if (left <= 0) return "Closing";
+      const h = Math.floor(left / 60);
+      const m = left % 60;
+      return h > 0 ? h + "h " + m + "m to close" : m + "m to close";
+    }
+
+    function startFry() {
+      const stop = state.stop;
+      state = fresh();
+      state.stop = stop;
+      state.phase = "play";
+      state.note = "4 o'clock. First ticket.";
+      paint(true);
+    }
+    function armPlain(id) {
+      if (state.stock[id] < 1) { say("No " + LABELS[id].toLowerCase() + " left.", "bad"); paint(true); return; }
+      state.armed = state.armed === id ? null : id;
+      if (state.armed) say(LABELS[id] + " selected. Tap a free pan.", "info");
+      paint(true);
+    }
+    function armFish(size) {
+      if (state.coated === size) { state.armed = "fillet"; say("Fillet is in the batter. Tap a free pan.", "info"); paint(true); return; }
+      if (state.coated) { say("One fillet in the batter at a time.", "bad"); paint(true); return; }
+      if (state.stock[size] < 1) { say(size === "med" ? "Medium tub is empty." : "Large tub is empty.", "bad"); paint(true); return; }
+      if (state.stock.batter < 1) { say("Batter bucket is empty.", "bad"); paint(true); return; }
+      state.stock[size] -= 1;
+      state.stock.batter -= 1;
+      state.coated = size;
+      state.armed = "fillet";
+      say("Through the batter. Drop it in a pan.", "info");
+      paint(true);
+    }
+    function putBack() {
+      if (!state.coated) return;
+      state.stock[state.coated] += 1;
+      state.stock.batter += 1;
+      state.coated = null;
+      if (state.armed === "fillet") state.armed = null;
+      say("Fillet is back in the tub.", "info");
+      paint(true);
+    }
+    function drop(index) {
+      const pan = state.pans[index];
+      if (!pan || pan.item) { say("That pan already has food in it.", "bad"); paint(true); return; }
+      const choice = state.armed;
+      if (!choice) { say("Choose chips, fish, a sausage, or something from the freezer.", "bad"); paint(true); return; }
+      let item;
+      if (choice === "fillet") {
+        if (!state.coated) { say("Fish goes through the batter first.", "bad"); paint(true); return; }
+        item = state.coated;
+        state.coated = null;
+        state.armed = null;
+      } else {
+        if (state.stock[choice] < 1) { say("No " + LABELS[choice].toLowerCase() + " left.", "bad"); paint(true); return; }
+        state.stock[choice] -= 1;
+        item = choice;
+      }
+      pan.item = item;
+      pan.cook = 0;
+      say(LABELS[item] + " in pan " + (index + 1) + ". Two minutes.", "info");
+      paint(true);
+    }
+    function pull(index) {
+      const pan = state.pans[index];
+      if (!pan || !pan.item) return;
+      const game = frySec(pan.cook);
+      const item = pan.item;
+      const pts = fryPoints(game);
+      pan.item = null;
+      pan.cook = 0;
+      if (pts < 1) {
+        state.wasted += 1;
+        state.score -= 10;
+        say(game < SPEC.perfectFrom ? LABELS[item] + " is undercooked. Binned. -10." : LABELS[item] + " is burnt. Binned. -10.", "bad");
+      } else {
+        state.holding[item] += 1;
+        state.score += pts;
+        say(pts === 10 ? LABELS[item] + " at 2:00. Perfect. +10." : LABELS[item] + " at " + fryClock(game) + ". +" + pts + ".", "info");
+      }
+      paint(true);
+    }
+    function toBox(id) {
+      if (state.holding[id] < 1) return;
+      state.holding[id] -= 1;
+      state.box[id] += 1;
+      paint(true);
+    }
+    function outBox(id) {
+      if (state.box[id] < 1) return;
+      state.box[id] -= 1;
+      state.holding[id] += 1;
+      paint(true);
+    }
+    function toggleSauce(key) {
+      if (state.box[key]) {
+        state.box[key] = false;
+        state.stock[key] += 1;
+        paint(true);
+        return;
+      }
+      if (state.stock[key] < 1) { say(SAUCE[key] + " is finished.", "bad"); paint(true); return; }
+      state.box[key] = true;
+      state.stock[key] -= 1;
+      paint(true);
+    }
+    function serve() {
+      const order = state.orders[state.index];
+      if (!order) return;
+      const miss = gap(order, state.box);
+      if (miss) {
+        state.mistakes += 1;
+        state.score -= 10;
+        say(miss + " -10.", "bad");
+        paint(true);
+        return;
+      }
+      state.served += 1;
+      state.index += 1;
+      while (state.orders.length < state.index + 2) state.orders.push(dealOne());
+      state.box = emptyBox();
+      say("Handed over. Next ticket.", "info");
+      paint(true);
+    }
+    function finish() {
+      state.phase = "done";
+      state.clock = END;
+      say(state.served > 0 ? state.served + " boxed. Hatch is shut." : "Shift's over. Hatch is shut.", state.served > 0 ? "info" : "bad");
+      paint(true);
+    }
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, "\u0026amp;")
+        .replace(/</g, "\u0026lt;")
+        .replace(/>/g, "\u0026gt;")
+        .replace(/"/g, "\u0026quot;");
+    }
+    function choice(id, label, count, on) {
+      return '<button class="choice' + (on ? " on" : "") + '" data-act="arm" data-id="' + id + '"><b>' + esc(label) + '</b><span>' + count + '</span></button>';
+    }
+
+    function shell() {
+      if (state.phase === "intro") {
+        return '<div class="hero"><div class="wrap">' +
+          '<p class="kicker">Mobile fish and chips · Norfolk</p>' +
+          '<h1>On the fryer</h1>' +
+          '<p>No prep. The van is set and the range is hot. From 4 until 7. Three pans. 2:00 is perfect.</p>' +
+          '<p><button class="btn gold" data-act="start">Start frying</button></p>' +
+          '<p><a class="back" href="/">Back to the van</a></p>' +
+          '</div></div>';
+      }
+      const order = state.orders[state.index];
+      const next = state.orders[state.index + 1];
+      const short = order ? shortage(order) : "";
+      let pans = "";
+      state.pans.forEach((pan, i) => {
+        const secs = pan.item ? frySec(pan.cook) : 0;
+        const pts = pan.item ? fryPoints(secs) : 0;
+        const fill = pan.item ? Math.min(1, secs / SPEC.burnAt) : 0;
+        const late = pan.item && pts < 1 && secs >= SPEC.perfectFrom;
+        pans += '<article class="pan"><div class="meta"><b>' + (i + 1) + '</b><span data-live="time-' + i + '">' + (pan.item ? fryClock(secs) : "0:00") + '</span></div>' +
+          '<p data-live="pts-' + i + '">' + (pan.item ? (pts > 0 ? String(pts) : (late ? "-10" : "…")) : "Empty") + '</p>' +
+          '<div class="well"><div class="oil' + (pan.item ? " hot" : "") + '"></div>' +
+          (pan.item ? '<p>' + esc(SHORT[pan.item]) + '</p>' : '') +
+          '<div class="fill" data-live="fill-' + i + '" style="transform:scaleX(' + fill + ')"></div></div>' +
+          (pan.item
+            ? '<button class="' + (pts > 0 ? "go" : "wait") + '" data-act="pull" data-i="' + i + '">Pull</button>'
+            : '<button class="wait" data-act="drop" data-i="' + i + '">Drop</button>') +
+          '</article>';
+      });
+      pans += '<div class="pan chipbox"><h3>Chip box</h3><p>' + (state.holding.chips > 0 ? state.holding.chips + " in" : "Empty") + '</p><div class="well" style="background:#f4f7f8"></div>' +
+        '<button class="wait" data-act="chips-box"' + (state.holding.chips < 1 ? " disabled" : "") + '>To box</button></div>';
+      const pass = ITEMS.filter((id) => state.holding[id] > 0).map((id) =>
+        '<button class="btn alt" data-act="to-box" data-id="' + id + '">' + esc(LABELS[id]) + " · " + state.holding[id] + '</button>'
+      ).join("");
+      const boxed = [];
+      ITEMS.forEach((id) => { if (state.box[id] > 0) boxed.push('<button class="btn alt box-item" data-act="out-box" data-id="' + id + '">' + esc(LABELS[id]) + " · " + state.box[id] + "</button>"); });
+      ["curry", "peas", "gravy"].forEach((key) => { if (state.box[key]) boxed.push('<button class="btn alt box-item" data-act="sauce" data-id="' + key + '">' + SAUCE[key] + " · on</button>"); });
+      const sauces = ["curry", "peas", "gravy"].map((key) =>
+        '<button class="sauce' + (state.box[key] ? " on" : "") + '" data-act="sauce" data-id="' + key + '"><b>' + SAUCE[key] + '</b><span>' + state.stock[key] + '</span></button>'
+      ).join("");
+      const body = state.phase === "done"
+        ? '<section><h2>Time\'s up</h2><p class="hint">' + esc(state.stop.name) + ". " + state.served + " orders boxed by " + clockText(state.clock) + '.</p>' +
+          '<div class="stats"><div class="stat"><span>Orders boxed</span><b>' + state.served + '</b></div>' +
+          '<div class="stat"><span>Cooking score</span><b>' + state.score + '</b></div>' +
+          '<div class="stat"><span>Wasted in the fryer</span><b>' + state.wasted + '</b></div>' +
+          '<div class="stat"><span>Boxes sent back</span><b>' + state.mistakes + '</b></div></div>' +
+          '<button class="btn" data-act="start">Fry again</button>' +
+          '<a class="btn alt" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none" href="https://clover-gem-acre-timber.grok.me/">Try the extended shift</a>' +
+          '<p class="hint">The extended shift is the full day: prep from 11, the drive, then the fry.</p></section>'
+        : '<section><h2>Ticket ' + (state.index + 1) + '</h2><p class="hint">' + (next ? "Next: " + esc(next.title) : "Keep going until 7.") + '</p>' +
+          '<h3 class="display" style="margin:0;font-size:1.6rem">' + esc(order.title) + '</h3><ul class="plain">' + lines(order).map((l) => "<li>" + esc(l) + "</li>").join("") + '</ul>' +
+          (short ? '<p class="bad">' + esc(short) + '</p>' : '') + '</section>' +
+          '<section><h2>Regal range</h2><p class="hint">2:00 is 10 points. Either side is worth less. Before 1:50 it\'s raw. After 2:20 it burns. Raw, burnt, or a wrong box costs 10.</p>' +
+          '<p class="soft">Range is hot</p><div class="range"><div class="hood"></div><div class="pans">' + pans + '</div></div></section>' +
+          '<section><h2>Into the fryer</h2><p class="hint">Fish goes through the batter first. Chips and sausages go in plain.</p><div class="grid2">' +
+          choice("chips", "Chips", state.stock.chips, state.armed === "chips") +
+          choice("sausage", "Sausage", state.stock.sausage, state.armed === "sausage") +
+          choice("med", "Medium fish", state.stock.med, state.armed === "fillet" && state.coated === "med") +
+          choice("large", "Large fish", state.stock.large, state.armed === "fillet" && state.coated === "large") +
+          '</div><p class="muted">Batter ladles left: ' + state.stock.batter + '</p>' +
+          (state.coated ? '<button class="btn alt" data-act="back">Put ' + (state.coated === "med" ? "medium" : "large") + ' fillet back</button>' : '') +
+          '</section>' +
+          '<section><h2>Freezer</h2><p class="hint">From frozen. Straight into a pan, same as everything else.</p><div class="grid2">' +
+          FROZEN.map((id) => choice(id, LABELS[id], state.stock[id], state.armed === id)).join("") +
+          '</div></section>' +
+          '<section><h2>Bain marie</h2><p class="ok">Hot. Tap a sauce to ladle it into the box. Tap again to take it out.</p><div class="grid3">' + sauces + '</div></section>' +
+          '<section><h2>On the pass</h2><p class="hint">Cooked food waits here. Tap it into the chip box.</p><div class="grid2">' + (pass || '<p class="muted">Nothing waiting.</p>') + '</div></section>' +
+          '<section><h2>Chip box</h2><p class="hint">Match the ticket, then hand it over. Tap anything to take it back out.</p><div class="grid2">' + (boxed.join("") || '<p class="muted">Box is empty.</p>') + '</div>' +
+          '<button class="btn" data-act="serve">Hand it over</button></section>';
+      return '<header class="top"><div class="wrap"><div class="top-row"><div><p class="display" style="margin:0;font-size:1.3rem">The Brothers</p><p class="muted" style="margin:0">Chips and Fish</p></div>' +
+        '<div style="text-align:right"><p class="display clock" data-live="clock">' + clockText(state.clock) + '</p><p class="muted" style="margin:4px 0 0">' + state.served + ' orders · ' + state.score + ' pts</p>' +
+        '<p class="soft" style="margin:0" data-live="left">' + (state.phase === "done" ? clockText(state.clock) : leftLabel()) + '</p></div></div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:8px"><span class="soft">' + esc(state.stop.name) + '</span>' +
+        (state.phase === "play" ? '<button class="btn alt" data-act="over">Start over</button>' : '') + '</div>' +
+        (state.note ? '<p class="note ' + (state.tone === "bad" ? "bad" : "soft") + '">' + esc(state.note) + '</p>' : '') +
+        '</div></header><main class="wrap">' + body + '</main>';
+    }
+
+    function paint(force) {
+      const next = [
+        state.phase, state.armed, state.coated, state.note, state.served, state.score, state.index,
+        state.wasted, state.mistakes, state.pans.map((p) => p.item || "").join(","),
+        ITEMS.map((id) => state.stock[id] + ":" + state.holding[id] + ":" + state.box[id]).join(","),
+        state.box.curry, state.box.peas, state.box.gravy, state.stock.batter, state.stock.curry, state.stock.peas, state.stock.gravy
+      ].join("|");
+      if (!force && next === sig) return;
+      sig = next;
+      document.getElementById("app").innerHTML = shell();
+    }
+    function live() {
+      const clock = document.querySelector('[data-live="clock"]');
+      if (clock) clock.textContent = clockText(state.clock);
+      const left = document.querySelector('[data-live="left"]');
+      if (left && state.phase === "play") left.textContent = leftLabel();
+      state.pans.forEach((pan, i) => {
+        const time = document.querySelector('[data-live="time-' + i + '"]');
+        const pts = document.querySelector('[data-live="pts-' + i + '"]');
+        const fill = document.querySelector('[data-live="fill-' + i + '"]');
+        if (!pan.item) return;
+        const secs = frySec(pan.cook);
+        const points = fryPoints(secs);
+        if (time) time.textContent = fryClock(secs);
+        if (pts) pts.textContent = points > 0 ? String(points) : (secs >= SPEC.perfectFrom ? "-10" : "…");
+        if (fill) fill.style.transform = "scaleX(" + Math.min(1, secs / SPEC.burnAt) + ")";
+      });
+    }
+
+    document.getElementById("app").addEventListener("click", (event) => {
+      const el = event.target.closest("[data-act]");
+      if (!el || el.disabled) return;
+      const act = el.getAttribute("data-act");
+      if (act === "start" || act === "over") { state = fresh(); if (act === "start") startFry(); else { state.phase = "intro"; paint(true); } return; }
+      if (state.phase !== "play" && act !== "start") return;
+      if (act === "arm") {
+        const id = el.getAttribute("data-id");
+        if (id === "med" || id === "large") armFish(id); else armPlain(id);
+      } else if (act === "back") putBack();
+      else if (act === "drop") drop(Number(el.getAttribute("data-i")));
+      else if (act === "pull") pull(Number(el.getAttribute("data-i")));
+      else if (act === "chips-box" || act === "to-box") toBox(act === "chips-box" ? "chips" : el.getAttribute("data-id"));
+      else if (act === "out-box") outBox(el.getAttribute("data-id"));
+      else if (act === "sauce") toggleSauce(el.getAttribute("data-id"));
+      else if (act === "serve") serve();
+    });
+
+    let last = performance.now();
+    function loop(now) {
+      const dt = Math.min(200, now - last);
+      last = now;
+      if (state.phase === "play") {
+        state.clock += dt / SPEC.msPerGameMin;
+        let burnt = false;
+        state.pans.forEach((pan) => {
+          if (!pan.item) return;
+          pan.cook += dt;
+          if (frySec(pan.cook) >= SPEC.burnAt) {
+            const label = LABELS[pan.item];
+            pan.item = null;
+            pan.cook = 0;
+            state.wasted += 1;
+            state.score -= 10;
+            say(label + " burnt. Binned. -10.", "bad");
+            burnt = true;
+          }
+        });
+        if (state.clock >= END) finish();
+        else if (burnt) paint(true);
+        else live();
+      }
+      requestAnimationFrame(loop);
+    }
+    paint(true);
+    requestAnimationFrame(loop);
+  </script>
 </body>
 </html>

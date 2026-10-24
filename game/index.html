@@ -319,19 +319,13 @@
       accountName = name;
       authMsg = "Opening the fry...";
       paint(true);
-      const slot = "frystart-" + (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
-      client.from("orders").insert({
-        user_id: session.user.id,
-        name: name,
-        address: "",
-        slot: slot,
-        day: "2099-01-01",
-        items: [],
-        total_pence: 0,
-        status: "unpaid"
-      }).select("id").single().then(({ data, error }) => {
-        if (error || !data) {
-          authMsg = (error && error.message) || "Could not start the fry.";
+      fetch(FRY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+        body: JSON.stringify({ action: "start", name: name })
+      }).then((res) => res.json()).then((data) => {
+        if (!data || data.error || !data.start) {
+          authMsg = (data && data.error) || "Could not start the fry.";
           state.phase = "intro";
           paint(true);
           return;
@@ -340,8 +334,12 @@
         state = fresh();
         state.stop = stop;
         state.phase = "play";
-        state.startId = data.id;
+        state.startId = data.start;
         state.note = "4 o'clock. First ticket.";
+        paint(true);
+      }).catch(() => {
+        authMsg = "Could not start the fry.";
+        state.phase = "intro";
         paint(true);
       });
     }

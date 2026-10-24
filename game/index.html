@@ -449,7 +449,7 @@
           '</div><p class="muted">Batter ladles left: ' + state.stock.batter + '</p>' +
           (state.coated ? '<button class="btn alt" data-act="back">Put ' + (state.coated === "med" ? "medium" : "large") + ' fillet back</button>' : '') +
           '</section>' +
-          '<section><h2>Freezer</h2><p class="hint">From frozen. Straight into a pan, same as everything else.</p><div class="grid2">' +
+          '<section><h2>Other Items</h2><p class="hint">From frozen. Straight into a pan, same as everything else.</p><div class="grid2">' +
           FROZEN.map((id) => choice(id, LABELS[id], state.stock[id], state.armed === id)).join("") +
           '</div></section>' +
           '<section><h2>Bain marie</h2><p class="ok">Hot. Tap a sauce to ladle it into the box. Tap again to take it out.</p><div class="grid3">' + sauces + '</div></section>' +

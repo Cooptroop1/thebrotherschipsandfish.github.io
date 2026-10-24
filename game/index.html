@@ -489,10 +489,11 @@
               '<p><button class="btn alt" data-act="logout">Log out</button></p>'
             : '<div class="auth">' +
               '<label for="loginName">Name</label><input id="loginName" maxlength="16" autocomplete="nickname">' +
+              (authMode === "join" ? '<label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="email">' : "") +
               '<label for="loginPass">Password</label><input id="loginPass" type="password" autocomplete="' + (authMode === "join" ? "new-password" : "current-password") + '">' +
               '<button class="btn gold" data-act="auth">' + (authMode === "join" ? "Sign up" : "Log in") + '</button>' +
               '<button class="btn alt" data-act="mode">' + (authMode === "join" ? "Already got a name? Log in" : "New here? Pick a name") + '</button>' +
-              '<p class="hint">The board shows your name, not an email. This login is only for the fry.</p>' +
+              '<p class="hint">The board shows your name. The email is only so a prize code can be sent.</p>' +
               '</div>') +
           (authMsg ? '<p class="hint">' + esc(authMsg) + '</p>' : "") +
           '<p><a class="back" href="/">Back to the van</a></p>' +
@@ -618,12 +619,14 @@
       if (act === "auth") {
         const name = cleanName((document.getElementById("loginName") || {}).value);
         const password = (document.getElementById("loginPass") || {}).value || "";
+        const email = String((document.getElementById("loginEmail") || {}).value || "").trim();
         if (!name) { authMsg = "Pick a name. 2 to 16 letters or numbers."; paint(true); return; }
         if (password.length < 4) { authMsg = "Password needs at least 4 characters."; paint(true); return; }
+        if (authMode === "join" && email.indexOf("@") < 1) { authMsg = "Add an email so a prize code can be sent."; paint(true); return; }
         fetch(FRY_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: authMode === "join" ? "signup" : "login", name: name, password: password })
+          body: JSON.stringify({ action: authMode === "join" ? "signup" : "login", name: name, email: email, password: password })
         }).then((res) => res.json()).then((data) => {
           if (!data || data.error || !data.token) { authMsg = (data && data.error) || "Could not log in."; paint(true); return; }
           saveLogin(data);

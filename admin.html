@@ -38,6 +38,7 @@
     <div class="wrap">
         <p><a href="/order.html?v=39">Back to the menu</a></p>
         <h1>Today's queue</h1>
+        <p id="fryJump" hidden style="margin:10px 0 16px"><a href="/fry-board.html?v=1" style="display:inline-block;border-radius:999px;background:var(--gold);color:var(--ink);font-weight:700;padding:10px 14px;text-decoration:none">Fry board</a></p>
         <p class="lead" id="note" style="color:#e8c96a;font-size:1.15rem">Log in with the staff email.</p>
         <div id="login">
             <label for="email">Email</label>
@@ -67,11 +68,6 @@
             </div>
         </div>
         <div id="list"></div>
-        <div class="card" id="fryCard" hidden>
-            <h2>Fry board</h2>
-            <p class="muted">Names and emails for prize codes. The public board only shows the name.</p>
-            <div id="fryList" style="margin-top:10px"></div>
-        </div>
         <p id="clearRow" hidden style="margin:14px 0"><button id="clearDay" type="button">Cancel all and clear the board</button></p>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -261,41 +257,6 @@
             if (status === "cancelled") document.getElementById("note").textContent = (slot ? clock(slot) : "That time") + " is free again.";
             loadOrders();
         }
-        async function loadFry() {
-            const card = document.getElementById("fryCard");
-            const list = document.getElementById("fryList");
-            card.hidden = false;
-            const session = (await client().auth.getSession()).data.session;
-            if (!session) return;
-            try {
-                const res = await fetch("https://brothers-pay.vercel.app/api/fry", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-                    body: JSON.stringify({ action: "entries" })
-                });
-                const data = await res.json();
-                const rows = data.rows || [];
-                if (!rows.length) { list.textContent = "No fry names yet."; return; }
-                list.innerHTML = rows.map((row) => "<p style='margin:8px 0;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap'><span><strong>" + esc(row.name) + "</strong> · " + esc(row.email || "no email yet") + " · " + row.orders + " sent · " + row.score + " pts</span><button type='button' data-drop='" + esc(row.name) + "'>Take off</button></p>").join("");
-                list.querySelectorAll("[data-drop]").forEach((button) => {
-                    button.onclick = async () => {
-                        const name = button.getAttribute("data-drop");
-                        if (!window.confirm("Take " + name + " off the board?")) return;
-                        button.disabled = true;
-                        const gone = await fetch("https://brothers-pay.vercel.app/api/fry", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-                            body: JSON.stringify({ action: "drop", name: name })
-                        });
-                        const result = await gone.json();
-                        if (result.error) { list.insertAdjacentHTML("afterbegin", "<p class='muted'>" + esc(result.error) + "</p>"); button.disabled = false; return; }
-                        await loadFry();
-                    };
-                });
-            } catch (err) {
-                list.textContent = "Could not load the fry names.";
-            }
-        }
         async function showQueue() {
             document.getElementById("login").style.display = "none";
             const session = (await client().auth.getSession()).data.session;
@@ -311,9 +272,9 @@
                 return;
             }
             document.getElementById("note").textContent = "Live for " + londonDate() + ". Cancel an order and that time can be booked again.";
+            document.getElementById("fryJump").hidden = false;
             document.getElementById("clearRow").hidden = false;
             await loadOrders();
-            await loadFry();
             clearInterval(timer);
             timer = setInterval(loadOrders, 8000);
             client().channel("queue").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, loadOrders).subscribe();

@@ -276,7 +276,22 @@
                 const data = await res.json();
                 const rows = data.rows || [];
                 if (!rows.length) { list.textContent = "No fry names yet."; return; }
-                list.innerHTML = rows.map((row) => "<p style='margin:8px 0'><strong>" + esc(row.name) + "</strong> · " + esc(row.email || "no email yet") + " · " + row.orders + " orders</p>").join("");
+                list.innerHTML = rows.map((row) => "<p style='margin:8px 0;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap'><span><strong>" + esc(row.name) + "</strong> · " + esc(row.email || "no email yet") + " · " + row.orders + " sent · " + row.score + " pts</span><button type='button' data-drop='" + esc(row.name) + "'>Take off</button></p>").join("");
+                list.querySelectorAll("[data-drop]").forEach((button) => {
+                    button.onclick = async () => {
+                        const name = button.getAttribute("data-drop");
+                        if (!window.confirm("Take " + name + " off the board?")) return;
+                        button.disabled = true;
+                        const gone = await fetch("https://brothers-pay.vercel.app/api/fry", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+                            body: JSON.stringify({ action: "drop", name: name })
+                        });
+                        const result = await gone.json();
+                        if (result.error) { list.insertAdjacentHTML("afterbegin", "<p class='muted'>" + esc(result.error) + "</p>"); button.disabled = false; return; }
+                        await loadFry();
+                    };
+                });
             } catch (err) {
                 list.textContent = "Could not load the fry names.";
             }

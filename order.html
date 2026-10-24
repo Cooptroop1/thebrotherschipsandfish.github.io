@@ -916,7 +916,8 @@
             document.getElementById("gate").hidden = on || (ordersOpen && !formHeld);
             if (on) authSay("");
             document.getElementById("logout").hidden = !on;
-            const staff = on && String(sessionUser.email || "").toLowerCase() === "jcooper4888@aol.co.uk";
+            const email = String(sessionUser.email || "").toLowerCase();
+            const staff = on && (email === "jcooper4888@aol.co.uk" || email === "apandy94@yahoo.com" || !!(profile && profile.is_admin));
             document.getElementById("staffLink").hidden = !staff;
             const bar = document.getElementById("bar");
             bar.hidden = !ordersOpen;

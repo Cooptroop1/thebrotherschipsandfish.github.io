@@ -36,7 +36,7 @@
 </head>
 <body>
     <div class="wrap">
-        <p><a href="/order.html?v=38">Back to the menu</a></p>
+        <p><a href="/order.html?v=39">Back to the menu</a></p>
         <h1>Today's queue</h1>
         <p class="lead" id="note" style="color:#e8c96a;font-size:1.15rem">Log in with the staff email.</p>
         <div id="login">
@@ -300,14 +300,14 @@
             document.getElementById("login").style.display = "none";
             const session = (await client().auth.getSession()).data.session;
             const email = session && session.user && session.user.email ? session.user.email.toLowerCase() : "";
-            if (email !== "jcooper4888@aol.co.uk") {
+            if (email !== "jcooper4888@aol.co.uk" && email !== "apandy94@yahoo.com") {
                 document.getElementById("note").textContent = "This login is not staff.";
                 return;
             }
             await loadSwitch();
             const { data } = await client().from("profiles").select("is_admin,name").eq("id", session.user.id).maybeSingle();
             if (!data || !data.is_admin) {
-                document.getElementById("note").textContent = "Use the switch above. The order queue still needs the staff flag on this account.";
+                document.getElementById("note").textContent = "Logged in, but staff is not switched on for this account. In Supabase, open the profiles table and set is_admin to true on this person's row.";
                 return;
             }
             document.getElementById("note").textContent = "Live for " + londonDate() + ". Cancel an order and that time can be booked again.";

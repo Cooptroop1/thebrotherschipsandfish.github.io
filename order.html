@@ -369,10 +369,31 @@
                 });
             } catch (err) {}
         }
+        let drinkMsg = "";
+        function isCan(id) { return CANS.some((row) => row[0] === id); }
+        function foodOrders() {
+            const sauce = { peas: 1, curry: 1, gravy: 1, ketchup: 1, tartare: 1 };
+            let n = 0;
+            Object.entries(basket).forEach(([id, qty]) => {
+                const base = String(id).split(":")[0];
+                if (isCan(id) || sauce[base] || String(base).indexOf("kids") === 0) return;
+                if (FOOD.some((row) => row[0] === base)) n += qty;
+            });
+            return n;
+        }
+        function canCount() {
+            return CANS.reduce((sum, can) => sum + (basket[can[0]] || 0), 0);
+        }
         function add(id, by) {
+            if (isCan(id) && by > 0 && canCount() + by > foodOrders() * 2) {
+                drinkMsg = foodOrders() ? "2 drinks with each food order." : "Add the food first. Drinks are 2 with each order.";
+                draw();
+                return;
+            }
             const next = (basket[id] || 0) + by;
             if (next <= 0) delete basket[id];
             else basket[id] = next;
+            drinkMsg = canCount() > foodOrders() * 2 ? "Too many drinks. Take some off. 2 with each food order." : "";
             if (checkout) unmountCard();
             saveBasket();
             draw();
@@ -548,7 +569,7 @@
             drinks.appendChild(h);
             const note = document.createElement("p");
             note.className = "lead";
-            note.textContent = "Coke, Tango, Pepsi Max, Dr Pepper, lemonade or a Fruit Shoot. £1. If that one has gone, you get another that is in.";
+            note.textContent = "Up to 2 drinks with each food order. £1 each. A kids meal already includes its drink.";
             drinks.appendChild(note);
             const grid = document.createElement("div");
             grid.className = "drinks";
@@ -574,6 +595,7 @@
                 plus.type = "button";
                 plus.textContent = "+";
                 plus.onclick = () => add(can[0], 1);
+                plus.disabled = canCount() >= foodOrders() * 2;
                 controls.append(plus);
                 box.append(controls);
                 grid.appendChild(box);
@@ -591,7 +613,10 @@
             if (!bits.length) return "<p class='empty'>Nothing in the basket yet.</p>";
             const food = foodPence();
             const short = Math.max(0, MIN_PENCE - food);
+            const over = canCount() > foodOrders() * 2;
             const bitsOut = bits.join("") + "<div class='line'><strong>To pay</strong><strong>" + money(food) + "</strong></div>";
+            if (over) return bitsOut + "<p class='empty'>Too many drinks. Take some off. 2 with each food order.</p>";
+            if (drinkMsg) return bitsOut + "<p class='empty'>" + drinkMsg + "</p>";
             if (short) return bitsOut + "<p class='empty'>Add " + money(short) + " more. £15 minimum to book a time.</p>";
             return bitsOut;
         }
@@ -599,18 +624,20 @@
             drawMenu();
             const food = foodPence();
             const short = Math.max(0, MIN_PENCE - food);
-            const ready = !short;
+            const over = canCount() > foodOrders() * 2;
+            const ready = !short && !over;
             let goLabel = "Choose a time";
-            if (count() && short) goLabel = "Add " + money(short) + " more";
+            if (count() && over) goLabel = "Too many drinks";
+            else if (count() && short) goLabel = "Add " + money(short) + " more";
             else if (count() && !sessionUser) goLabel = "Login to book a slot";
             document.getElementById("desk").innerHTML = "<h2>Basket</h2>" + lines() + "<button class='go' type='button' id='deskGo'" + (count() && ready ? "" : " disabled") + ">" + goLabel + "</button>";
             const deskGo = document.getElementById("deskGo");
             if (deskGo) deskGo.onclick = openSheet;
             const bar = document.getElementById("bar");
-            bar.textContent = !count() ? "Basket is empty" : (short ? ("Add " + money(short) + " to book a time") : (sessionUser ? ("Basket · " + count() + " · " + money(food)) : "Login to book a slot"));
+            bar.textContent = !count() ? "Basket is empty" : (over ? "Too many drinks. 2 with each food order." : (short ? ("Add " + money(short) + " to book a time") : (sessionUser ? ("Basket · " + count() + " · " + money(food)) : "Login to book a slot")));
             document.getElementById("totals").innerHTML = count() ? lines() : "";
             document.getElementById("pay").textContent = count() ? ("Book " + money(food)) : "Add food first";
-            document.getElementById("pay").disabled = !count() || !held;
+            document.getElementById("pay").disabled = !count() || !held || over;
             drawSlots();
         }
         function drawSlots() {
@@ -761,6 +788,10 @@
                 drawSlots();
                 return;
             }
+            if (canCount() > foodOrders() * 2) {
+                document.getElementById("hold").textContent = "2 drinks with each food order. Take some off.";
+                return;
+            }
             if (foodPence() < MIN_PENCE) {
                 document.getElementById("hold").textContent = "Minimum order is £15 to book a time. Add more food first.";
                 return;
@@ -810,6 +841,10 @@
             if (slotPassed(slot) && !(held === slot && left > 0)) {
                 document.getElementById("hold").textContent = "That time has already gone. Pick a later one.";
                 drawSlots();
+                return;
+            }
+            if (canCount() > foodOrders() * 2) {
+                document.getElementById("hold").textContent = "2 drinks with each food order. Take some off.";
                 return;
             }
             if (foodPence() < MIN_PENCE) {

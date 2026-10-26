@@ -1278,11 +1278,14 @@
         }
         let ordersOpen = false;
         let halfHour = false;
+        const lookMenu = /[?&]look=1(?:&|$)/.test(location.search);
         function shownSlots() { return halfHour ? HALF : SLOTS; }
         function paintShop() {
+            if (lookMenu) ordersOpen = true;
             document.getElementById("closedBox").hidden = ordersOpen;
             document.getElementById("openShop").hidden = !ordersOpen;
-            document.getElementById("banner").hidden = ordersOpen;
+            document.getElementById("banner").hidden = ordersOpen && !lookMenu;
+            if (lookMenu) document.getElementById("banner").firstElementChild.textContent = "Just a look at the menu. Customers still see orders closed.";
             const bar = document.getElementById("bar");
             bar.hidden = !ordersOpen;
             if (!ordersOpen) closeSheet();
@@ -1293,6 +1296,11 @@
             if (chip) chip.textContent = half ? "Every 30 min" : "Every 15 min";
         }
         async function loadShopFlag() {
+            if (lookMenu) {
+                ordersOpen = true;
+                paintShop();
+                return;
+            }
             try {
                 const db = sb();
                 if (!db) throw new Error("closed");

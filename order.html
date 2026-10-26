@@ -121,7 +121,7 @@
             <span class="top-actions">
                 <span id="who"></span>
                 <button id="logout" type="button" hidden style="background:transparent;color:#e8c96a;border:0;font:inherit;font-weight:700;cursor:pointer">Log out</button>
-                <a class="back" id="staffLink" href="/admin.html?v=9" hidden>Staff</a>
+                <a class="back" id="staffLink" href="/admin.html?v=4" hidden>Staff</a>
                 <span id="account" class="account">
                     <button class="mini" id="showLogin" type="button">Log in</button>
                     <button class="mini" id="showJoin" type="button">Sign up</button>
@@ -130,7 +130,7 @@
             </span>
         </div>
     </header>
-    <div class="banner" id="banner"><div class="wrap" id="bannerText">Orders are closed today.</div></div>
+    <div class="banner" id="banner"><div class="wrap">Orders are closed.</div></div>
     <main class="wrap">
         <p id="loginNote" hidden></p>
         <div id="gate" class="login panel">
@@ -160,7 +160,7 @@
         <p id="holdBar" class="holdbar" hidden></p>
         <div id="closedBox">
             <h1>Orders are closed</h1>
-            <p class="lead" id="closedLine">Orders are closed today. We open Wednesday at Rashes Green, Toftwood, Thursday at Swanton Morley Village Hall, and Friday when the stop is set.</p>
+            <p class="lead">Pickup orders are switched off for now. Log in or sign up above so you are ready when they are switched on.</p>
         </div>
         <div id="openShop" hidden>
         <div class="chips">
@@ -170,7 +170,7 @@
             <span class="chip">£15 minimum</span>
         </div>
         <h1>Order for pickup</h1>
-        <p class="lead" id="placeLine">Pickup tonight.</p>
+        <p class="lead">Tap + to add. The basket has to be at least £15 before a time can be booked. Then pick a pickup time. That time is taken straight away.</p>
         <div id="shop">
         <p class="lead" id="bookedNote"></p>
         <div class="layout">
@@ -1279,27 +1279,7 @@
         let ordersOpen = false;
         let halfHour = false;
         function shownSlots() { return halfHour ? HALF : SLOTS; }
-        function londonWeekday() {
-            return new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", weekday: "long" }).format(new Date());
-        }
-        function placeCopy(open) {
-            const day = londonWeekday();
-            const where = { Wednesday: "Rashes Green, Toftwood", Thursday: "Swanton Morley Village Hall" };
-            if (open && where[day]) return "Pickup from " + where[day] + ". Tap + to add. £15 minimum, then pick a time.";
-            if (open && day === "Friday") return "Friday pickup. The stop is not set yet. Tap + to add. £15 minimum, then pick a time.";
-            if (open) return "Pickup tonight. Tap + to add. £15 minimum, then pick a time.";
-            if (where[day]) return "Orders are closed. " + day + " pickup is " + where[day] + ", when orders are switched on.";
-            if (day === "Friday") return "Orders are closed. Friday's stop is not set yet.";
-            return "Orders are closed today. We open Wednesday at Rashes Green, Toftwood, Thursday at Swanton Morley Village Hall, and Friday when the stop is set.";
-        }
         function paintShop() {
-            const words = placeCopy(ordersOpen);
-            const banner = document.getElementById("bannerText");
-            const closed = document.getElementById("closedLine");
-            const place = document.getElementById("placeLine");
-            if (banner) banner.textContent = words;
-            if (closed) closed.textContent = words;
-            if (place) place.textContent = words;
             document.getElementById("closedBox").hidden = ordersOpen;
             document.getElementById("openShop").hidden = !ordersOpen;
             document.getElementById("banner").hidden = ordersOpen;
@@ -1319,14 +1299,12 @@
                 const { data, error } = await db.rpc("booked_slots", { for_day: "2099-01-01" });
                 if (error) throw error;
                 const rows = data || [];
-                const hasOpen = rows.some((row) => row.slot === "ORDERS-OPEN");
-                const hasHalf = rows.some((row) => row.slot === "ORDERS-OPEN-HALF");
-                ordersOpen = hasOpen || hasHalf;
-                const nextHalf = hasHalf && !hasOpen;
-                if (nextHalf !== halfHour) {
-                    halfHour = nextHalf;
+                ordersOpen = rows.some((row) => row.slot === "ORDERS-OPEN" || row.slot === "ORDERS-OPEN-HALF");
+                const openRow = rows.find((row) => row.slot === "ORDERS-OPEN" || row.slot === "ORDERS-OPEN-HALF");
+                if (openRow && (openRow.slot === "ORDERS-OPEN-HALF") !== halfHour) {
+                    halfHour = openRow.slot === "ORDERS-OPEN-HALF";
                     paintTimes(halfHour);
-                    try { drawSlots(); } catch (err) {}
+                    drawSlots();
                 }
             } catch (err) {
                 ordersOpen = false;
@@ -1340,7 +1318,7 @@
         paintShop();
         paintWho();
         loadShopFlag();
-        setInterval(loadShopFlag, 4000);
+        setInterval(loadShopFlag, 20000);
         let shownMinute = -1;
         setInterval(() => {
             const mins = ukMinutes();

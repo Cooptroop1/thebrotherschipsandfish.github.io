@@ -36,9 +36,8 @@
 </head>
 <body>
     <div class="wrap">
-        <p><a href="/order.html?v=39">Back to the menu</a></p>
+        <p><a href="/order.html?v=38">Back to the menu</a></p>
         <h1>Today's queue</h1>
-        <p id="fryJump" hidden style="margin:10px 0 16px"><a href="/fry-board.html?v=1" style="display:inline-block;border-radius:999px;background:var(--gold);color:var(--ink);font-weight:700;padding:10px 14px;text-decoration:none">Fry board</a></p>
         <p class="lead" id="note" style="color:#e8c96a;font-size:1.15rem">Log in with the staff email.</p>
         <div id="login">
             <label for="email">Email</label>
@@ -141,19 +140,11 @@
                 ? "Off. Customers only see 16:30, 17:00, 17:30, 18:00, 18:30 and 19:00."
                 : "On. Customers see every 15 minutes from 16:30 to 19:00.";
         }
-        async function readShop() {
-            const { data, error } = await client().rpc("booked_slots", { for_day: "2099-01-01" });
-            if (error) throw error;
-            const rows = data || [];
-            const hasOpen = rows.some((row) => row.slot === "ORDERS-OPEN");
-            const hasHalf = rows.some((row) => row.slot === "ORDERS-OPEN-HALF");
-            return { open: hasOpen || hasHalf, half: hasHalf && !hasOpen };
-        }
         async function loadSwitch() {
             try {
-                const data = await readShop();
-                paintSwitch(data.open);
-                paintTimes(data.half);
+                const row = await shopRow();
+                paintSwitch(!!(row && row.status !== "cancelled"));
+                paintTimes(!!(row && row.slot === "ORDERS-OPEN-HALF"));
             } catch (err) {
                 paintSwitch(false);
                 document.getElementById("switchNote").textContent = "Could not check if orders are open.";
@@ -276,11 +267,10 @@
             await loadSwitch();
             const { data } = await client().from("profiles").select("is_admin,name").eq("id", session.user.id).maybeSingle();
             if (!data || !data.is_admin) {
-                document.getElementById("note").textContent = "Logged in, but staff is not switched on for this account. In Supabase, open the profiles table and set is_admin to true on this person's row.";
+                document.getElementById("note").textContent = "Use the switch above. The order queue still needs the staff flag on this account.";
                 return;
             }
             document.getElementById("note").textContent = "Live for " + londonDate() + ". Cancel an order and that time can be booked again.";
-            document.getElementById("fryJump").hidden = false;
             document.getElementById("clearRow").hidden = false;
             await loadOrders();
             clearInterval(timer);
@@ -293,14 +283,13 @@
             button.disabled = true;
             try {
                 const session = (await client().auth.getSession()).data.session;
-                const found = await client().from("orders").select("id,status,slot").eq("day", "2099-01-01").in("slot", ["ORDERS-OPEN", "ORDERS-OPEN-HALF"]);
-                const rows = found.data || [];
-                const live = rows.filter((row) => row.status !== "cancelled");
-                if (turningOn && !live.length && session) {
-                    const old = rows[0];
-                    let saved = old
-                        ? await client().from("orders").update({ status: "new", slot: "ORDERS-OPEN" }).eq("id", old.id).select("id")
-                        : await client().from("orders").insert({
+                const row = await shopRow();
+                let error = null;
+                if (turningOn) {
+                    if (row && row.status === "cancelled") {
+                        error = (await client().from("orders").update({ status: "new" }).eq("id", row.id)).error;
+                    } else if (!row) {
+                        error = (await client().from("orders").insert({
                             user_id: session.user.id,
                             name: "Shop",
                             address: "Shop",
@@ -309,29 +298,19 @@
                             items: [],
                             total_pence: 0,
                             status: "new"
-                        }).select("id");
-                    if (saved.error || !saved.data || !saved.data.length) {
-                        const backup = await pushShop({ action: "switch", open: true });
-                        const check = await readShop();
-                        if (!check.open) {
-                            document.getElementById("switchNote").textContent = (saved.error && saved.error.message) || (backup && backup.error) || "Orders did not stay on.";
-                            paintSwitch(false);
-                            return;
-                        }
+                        })).error;
                     }
+                } else if (row && row.status !== "cancelled") {
+                    error = (await client().from("orders").update({ status: "cancelled" }).eq("id", row.id)).error;
                 }
-                if (!turningOn) {
-                    for (let i = 0; i < live.length; i++) {
-                        await client().from("orders").update({ status: "cancelled" }).eq("id", live[i].id);
-                    }
-                    await pushShop({ action: "switch", open: false });
+                if (error) {
+                    const raw = error.message || "Could not change it.";
+                    document.getElementById("switchNote").textContent = /policy|permission|row-level/i.test(raw)
+                        ? "Logged in, but the database blocked the switch. It needs the staff setup run once in Supabase."
+                        : raw;
+                    return;
                 }
-                const again = await readShop();
-                paintSwitch(!!again.open);
-                paintTimes(!!again.half);
-                document.getElementById("switchNote").textContent = again.open
-                    ? "Orders are open. The menu is on."
-                    : (turningOn ? "Orders did not stay on." : "Orders are closed. The menu is hidden.");
+                paintSwitch(turningOn);
             } catch (err) {
                 document.getElementById("switchNote").textContent = "Could not change it.";
             } finally {
@@ -343,30 +322,41 @@
             const turningHalf = button.dataset.half !== "yes";
             button.disabled = true;
             try {
-                const data = await pushShop({ action: "switch", half: turningHalf });
-                if (!data || data.error || data.half !== turningHalf) {
-                    document.getElementById("timeNote").textContent = (data && data.error) || "Could not change it.";
-                    if (data && typeof data.half === "boolean") paintTimes(data.half);
+                const session = (await client().auth.getSession()).data.session;
+                let row = await shopRow();
+                let created = false;
+                if (!row) {
+                    const inserted = await client().from("orders").insert({
+                        user_id: session.user.id,
+                        name: "Shop",
+                        address: "Shop",
+                        slot: "ORDERS-OPEN",
+                        day: "2099-01-01",
+                        items: [],
+                        total_pence: 0,
+                        status: "new"
+                    }).select("id,status,slot").single();
+                    if (inserted.error) throw inserted.error;
+                    row = inserted.data;
+                    created = true;
+                }
+                const patch = { slot: turningHalf ? "ORDERS-OPEN-HALF" : "ORDERS-OPEN" };
+                if (created) patch.status = "cancelled";
+                const { error } = await client().from("orders").update(patch).eq("id", row.id);
+                if (error) {
+                    const raw = error.message || "Could not change it.";
+                    document.getElementById("timeNote").textContent = /policy|permission|row-level/i.test(raw)
+                        ? "Logged in, but the database blocked the switch. It needs the staff setup run once in Supabase."
+                        : raw;
                     return;
                 }
-                paintTimes(!!data.half);
+                paintTimes(turningHalf);
             } catch (err) {
                 document.getElementById("timeNote").textContent = "Could not change it.";
             } finally {
                 button.disabled = false;
             }
         };
-        async function pushShop(body) {
-            const session = (await client().auth.getSession()).data.session;
-            const cfg = window.ORDER_CONFIG || {};
-            if (!session || !cfg.payUrl) return { error: "Log in first." };
-            const res = await fetch(cfg.payUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-                body: JSON.stringify(body)
-            });
-            return await res.json();
-        }
         document.getElementById("clearDay").onclick = async () => {
             const button = document.getElementById("clearDay");
             button.disabled = true;

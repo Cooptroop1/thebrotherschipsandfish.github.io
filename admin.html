@@ -292,22 +292,46 @@
             const turningOn = button.dataset.open !== "yes";
             button.disabled = true;
             try {
+                const session = (await client().auth.getSession()).data.session;
+                const found = await client().from("orders").select("id,status,slot").eq("day", "2099-01-01").in("slot", ["ORDERS-OPEN", "ORDERS-OPEN-HALF"]);
+                const rows = found.data || [];
+                const live = rows.filter((row) => row.status !== "cancelled");
+                if (turningOn && !live.length && session) {
+                    const old = rows[0];
+                    let saved = old
+                        ? await client().from("orders").update({ status: "new", slot: "ORDERS-OPEN" }).eq("id", old.id).select("id")
+                        : await client().from("orders").insert({
+                            user_id: session.user.id,
+                            name: "Shop",
+                            address: "Shop",
+                            slot: "ORDERS-OPEN",
+                            day: "2099-01-01",
+                            items: [],
+                            total_pence: 0,
+                            status: "new"
+                        }).select("id");
+                    if (saved.error || !saved.data || !saved.data.length) {
+                        const backup = await pushShop({ action: "switch", open: true });
+                        const check = await readShop();
+                        if (!check.open) {
+                            document.getElementById("switchNote").textContent = (saved.error && saved.error.message) || (backup && backup.error) || "Orders did not stay on.";
+                            paintSwitch(false);
+                            return;
+                        }
+                    }
+                }
                 if (!turningOn) {
-                    const { data } = await client().from("orders").select("id,status").eq("day", "2099-01-01").in("slot", ["ORDERS-OPEN", "ORDERS-OPEN-HALF"]);
-                    const live = (data || []).filter((row) => row.status !== "cancelled");
                     for (let i = 0; i < live.length; i++) {
                         await client().from("orders").update({ status: "cancelled" }).eq("id", live[i].id);
                     }
+                    await pushShop({ action: "switch", open: false });
                 }
-                const data = await pushShop({ action: "switch", open: turningOn });
                 const again = await readShop();
-                if (!again || again.open !== turningOn) {
-                    document.getElementById("switchNote").textContent = (data && data.error) || (turningOn ? "Orders did not stay on." : "Orders did not turn off.");
-                    paintSwitch(!!(again && again.open));
-                    return;
-                }
-                paintSwitch(again.open);
-                document.getElementById("switchNote").textContent = again.open ? "Orders are open. The menu is on." : "Orders are closed. The menu is hidden.";
+                paintSwitch(!!again.open);
+                paintTimes(!!again.half);
+                document.getElementById("switchNote").textContent = again.open
+                    ? "Orders are open. The menu is on."
+                    : (turningOn ? "Orders did not stay on." : "Orders are closed. The menu is hidden.");
             } catch (err) {
                 document.getElementById("switchNote").textContent = "Could not change it.";
             } finally {

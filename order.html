@@ -121,7 +121,7 @@
             <span class="top-actions">
                 <span id="who"></span>
                 <button id="logout" type="button" hidden style="background:transparent;color:#e8c96a;border:0;font:inherit;font-weight:700;cursor:pointer">Log out</button>
-                <a class="back" id="staffLink" href="/admin.html?v=7" hidden>Staff</a>
+                <a class="back" id="staffLink" href="/admin.html?v=8" hidden>Staff</a>
                 <span id="account" class="account">
                     <button class="mini" id="showLogin" type="button">Log in</button>
                     <button class="mini" id="showJoin" type="button">Sign up</button>
@@ -1314,20 +1314,20 @@
         }
         async function loadShopFlag() {
             try {
-                const cfg = window.ORDER_CONFIG || {};
-                const res = await fetch(cfg.payUrl, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: "shop" })
-                });
-                const data = await res.json();
-                const nextHalf = !!data.half;
+                const db = sb();
+                if (!db) throw new Error("closed");
+                const { data, error } = await db.rpc("booked_slots", { for_day: "2099-01-01" });
+                if (error) throw error;
+                const rows = data || [];
+                const hasOpen = rows.some((row) => row.slot === "ORDERS-OPEN");
+                const hasHalf = rows.some((row) => row.slot === "ORDERS-OPEN-HALF");
+                const nextHalf = hasHalf && !hasOpen;
                 if (nextHalf !== halfHour) {
                     halfHour = nextHalf;
                     paintTimes(halfHour);
                     drawSlots();
                 }
-                ordersOpen = !!data.open;
+                ordersOpen = hasOpen || hasHalf;
             } catch (err) {
                 ordersOpen = false;
             }

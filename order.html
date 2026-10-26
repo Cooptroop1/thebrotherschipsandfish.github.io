@@ -1158,7 +1158,7 @@
                     email: email,
                     options: {
                         shouldCreateUser: false,
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=38"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html"
                     }
                 });
                 if (error) {
@@ -1207,7 +1207,7 @@
                     password,
                     options: {
                         data: { name, address: phone, phone },
-                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html?v=38"
+                        emailRedirectTo: "https://thebrotherschipsandfish.co.uk/order.html"
                     }
                 });
                 if (error) {
@@ -1261,14 +1261,14 @@
                     } else {
                         showOrder(paid, "failed", false);
                     }
-                    history.replaceState({}, "", "/order.html?v=28");
+                    history.replaceState({}, "", "/order.html");
                     return;
                 }
                 if (sessionUser) {
                     if (cameBack) {
                         document.getElementById("bookedNote").textContent = "No payment was taken. The time stays held. Add what you want, then press the button when you are ready.";
                         resumeHold(false);
-                        history.replaceState({}, "", "/order.html?v=28");
+                        history.replaceState({}, "", "/order.html");
                         return;
                     }
                     resumeHold(false);
@@ -1278,11 +1278,14 @@
         }
         let ordersOpen = false;
         let halfHour = false;
+        const lookMenu = /[?&]look=1(?:&|$)/.test(location.search);
         function shownSlots() { return halfHour ? HALF : SLOTS; }
         function paintShop() {
+            if (lookMenu) ordersOpen = true;
             document.getElementById("closedBox").hidden = ordersOpen;
             document.getElementById("openShop").hidden = !ordersOpen;
-            document.getElementById("banner").hidden = ordersOpen;
+            document.getElementById("banner").hidden = ordersOpen && !lookMenu;
+            if (lookMenu) document.getElementById("banner").firstElementChild.textContent = "Menu check. Customers only see this when orders are switched on.";
             const bar = document.getElementById("bar");
             bar.hidden = !ordersOpen;
             if (!ordersOpen) closeSheet();
@@ -1293,6 +1296,11 @@
             if (chip) chip.textContent = half ? "Every 30 min" : "Every 15 min";
         }
         async function loadShopFlag() {
+            if (lookMenu) {
+                ordersOpen = true;
+                paintShop();
+                return;
+            }
             let open = false;
             let half = false;
             try {

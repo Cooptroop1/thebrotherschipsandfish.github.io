@@ -140,11 +140,24 @@
                 ? "Off. Customers only see 16:30, 17:00, 17:30, 18:00, 18:30 and 19:00."
                 : "On. Customers see every 15 minutes from 16:30 to 19:00.";
         }
+        async function pushShop(body) {
+            const session = (await client().auth.getSession()).data.session;
+            const cfg = window.ORDER_CONFIG || {};
+            if (!session || !cfg.payUrl) return { error: "Log in first." };
+            const res = await fetch(cfg.payUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+                body: JSON.stringify(body)
+            });
+            return await res.json();
+        }
         async function loadSwitch() {
             try {
-                const row = await shopRow();
-                paintSwitch(!!(row && row.status !== "cancelled"));
-                paintTimes(!!(row && row.slot === "ORDERS-OPEN-HALF"));
+                const data = await pushShop({ action: "shop" });
+                let row = null;
+                try { row = await shopRow(); } catch (err) {}
+                paintSwitch(!!(data && data.open) || !!(row && row.status !== "cancelled"));
+                paintTimes(!!(data && data.half) || !!(row && row.status !== "cancelled" && row.slot === "ORDERS-OPEN-HALF"));
             } catch (err) {
                 paintSwitch(false);
                 document.getElementById("switchNote").textContent = "Could not check if orders are open.";
@@ -283,12 +296,13 @@
             button.disabled = true;
             try {
                 const session = (await client().auth.getSession()).data.session;
-                const row = await shopRow();
+                let row = null;
+                try { row = await shopRow(); } catch (err) {}
                 let error = null;
                 if (turningOn) {
                     if (row && row.status === "cancelled") {
                         error = (await client().from("orders").update({ status: "new" }).eq("id", row.id)).error;
-                    } else if (!row) {
+                    } else if (!row && session) {
                         error = (await client().from("orders").insert({
                             user_id: session.user.id,
                             name: "Shop",
@@ -304,13 +318,19 @@
                     error = (await client().from("orders").update({ status: "cancelled" }).eq("id", row.id)).error;
                 }
                 if (error) {
-                    const raw = error.message || "Could not change it.";
-                    document.getElementById("switchNote").textContent = /policy|permission|row-level/i.test(raw)
-                        ? "Logged in, but the database blocked the switch. It needs the staff setup run once in Supabase."
-                        : raw;
+                    const raw = error.message || "";
+                    if (!/policy|permission|row-level/i.test(raw)) {
+                        document.getElementById("switchNote").textContent = raw || "Could not change it.";
+                        return;
+                    }
+                }
+                const data = await pushShop({ action: "switch", open: turningOn });
+                if (!data || data.error || data.open !== turningOn) {
+                    document.getElementById("switchNote").textContent = (data && data.error) || "Orders did not stay on.";
+                    paintSwitch(!!(data && data.open));
                     return;
                 }
-                paintSwitch(turningOn);
+                paintSwitch(!!data.open);
             } catch (err) {
                 document.getElementById("switchNote").textContent = "Could not change it.";
             } finally {
@@ -343,14 +363,13 @@
                 const patch = { slot: turningHalf ? "ORDERS-OPEN-HALF" : "ORDERS-OPEN" };
                 if (created) patch.status = "cancelled";
                 const { error } = await client().from("orders").update(patch).eq("id", row.id);
-                if (error) {
-                    const raw = error.message || "Could not change it.";
-                    document.getElementById("timeNote").textContent = /policy|permission|row-level/i.test(raw)
-                        ? "Logged in, but the database blocked the switch. It needs the staff setup run once in Supabase."
-                        : raw;
+                const saved = await pushShop({ action: "switch", half: turningHalf });
+                if (!saved || saved.error || saved.half !== turningHalf) {
+                    document.getElementById("timeNote").textContent = (saved && saved.error) || "Could not change the times.";
+                    if (saved && typeof saved.half === "boolean") paintTimes(saved.half);
                     return;
                 }
-                paintTimes(turningHalf);
+                paintTimes(!!saved.half);
             } catch (err) {
                 document.getElementById("timeNote").textContent = "Could not change it.";
             } finally {

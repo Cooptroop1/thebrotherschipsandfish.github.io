@@ -273,6 +273,7 @@
     let client = null;
     let session = null;
     let accountName = "";
+    let gameName = "";
     let authMsg = "";
     let boardRows = [];
     let boardNote = "";
@@ -317,12 +318,6 @@
         paint(true);
         return;
       }
-      if (!accountName) {
-        authMsg = "Your account needs a name before it can go on the board.";
-        state.phase = "intro";
-        paint(true);
-        return;
-      }
       authMsg = "Opening the fry...";
       paint(true);
       fetch(FRY_URL, {
@@ -336,6 +331,7 @@
           paint(true);
           return;
         }
+        if (data.name) gameName = cleanName(data.name) || gameName;
         const stop = state.stop;
         state = fresh();
         state.stop = stop;
@@ -462,21 +458,27 @@
       if (state.phase === "done") return;
       state.phase = "done";
       state.clock = END;
-      boardNote = state.served > 0 ? "Saving your score..." : "Box at least one order to get on the board.";
+      boardNote = state.served > 0 ? "Pick the name for the board. Your order name is not shown." : "Box at least one order to get on the board.";
       say(state.served > 0 ? state.served + " boxed. Hatch is shut." : "Shift's over. Hatch is shut.", state.served > 0 ? "info" : "bad");
       paint(true);
+      if (state.served < 1) loadBoard().then(() => { if (state.phase === "done") paint(true); });
+    }
+    function saveScore() {
+      const typed = cleanName((document.getElementById("gameName") || {}).value);
+      if (!typed) { boardNote = "Use 2 to 16 letters or numbers."; paint(true); return; }
       const token = session && session.access_token;
-      const job = state.served > 0 && token && state.startId
-        ? fetch(FRY_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-            body: JSON.stringify({ action: "score", start_id: state.startId, orders: state.served, score: state.score, name: accountName })
-          }).then((res) => res.json())
-        : Promise.resolve(null);
-      job.then((data) => {
+      if (!token || !state.startId) { boardNote = "Log in and play the fry again."; paint(true); return; }
+      gameName = typed;
+      boardNote = "Saving your score...";
+      paint(true);
+      fetch(FRY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ action: "score", start_id: state.startId, orders: state.served, score: state.score, name: gameName })
+      }).then((res) => res.json()).then((data) => {
         if (data && data.rows) boardRows = data.rows;
         if (data && data.error) boardNote = data.error;
-        else if (data && data.ok) boardNote = "On the board.";
+        else if (data && data.ok) boardNote = gameName + " is on the board.";
         if (!data || !data.rows) return loadBoard();
       }).catch(() => {
         boardNote = "Could not save that score.";
@@ -509,14 +511,14 @@
           '<h1>On the fryer</h1>' +
           '<p>No prep. The van is set and the range is hot. From 4 until 7. Three pans. 2:00 is perfect.</p>' +
           (session
-            ? '<p>Signed in as ' + esc(accountName || "your account") + '. Same login as ordering. That name goes on the board.</p>' +
+            ? '<p>Signed in' + (accountName ? " as " + esc(accountName) : "") + '. Same login as ordering. At the end you pick the name that goes on the board.</p>' +
               '<p><button class="btn gold" data-act="start">Start frying</button></p>' +
               '<p><button class="btn alt" data-act="logout">Log out</button></p>'
             : '<div class="auth">' +
               '<label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="email">' +
               '<label for="loginPass">Password</label><input id="loginPass" type="password" autocomplete="current-password">' +
               '<button class="btn gold" data-act="auth">Log in</button>' +
-              '<p class="hint">Same login as ordering. The board shows the name on that account.</p>' +
+              '<p class="hint">Same login as ordering. Your order name is not put on the board.</p>' +
               '<p class="hint"><a href="/order.html?v=38">New here? Sign up on the order page.</a></p>' +
               '</div>') +
           (authMsg ? '<p class="hint">' + esc(authMsg) + '</p>' : "") +
@@ -561,6 +563,9 @@
           '<div class="stat"><span>Cooking score</span><b>' + state.score + '</b></div>' +
           '<div class="stat"><span>Wasted in the fryer</span><b>' + state.wasted + '</b></div>' +
           '<div class="stat"><span>Boxes sent back</span><b>' + state.mistakes + '</b></div></div>' +
+          (state.served > 0
+            ? '<label for="gameName">Game name</label><input id="gameName" maxlength="16" autocomplete="nickname" value="' + esc(gameName) + '"><p class="hint">This name goes on the board. Your order name stays off it.</p><button class="btn gold" data-act="save-name">Put me on the board</button>'
+            : '') +
           '<button class="btn" data-act="start">Fry again</button>' +
           '<a class="btn alt" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none" href="https://clover-gem-acre-timber.grok.me/">Try the extended shift</a>' +
           '<p class="hint">The extended shift is the full day. It does not go on this board.</p>' +
@@ -652,6 +657,7 @@
         }).catch(() => { authMsg = "Could not log in."; paint(true); });
         return;
       }
+      if (act === "save-name") { saveScore(); return; }
       if (act === "start" || act === "over") { if (act === "start") startFry(); else { state = fresh(); state.phase = "intro"; paint(true); } return; }
       if (state.phase !== "play" && act !== "start") return;
       if (act === "arm") {

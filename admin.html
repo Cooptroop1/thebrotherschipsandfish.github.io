@@ -143,9 +143,9 @@
         }
         async function loadSwitch() {
             try {
-                const row = await shopRow();
-                paintSwitch(!!(row && row.status !== "cancelled"));
-                paintTimes(!!(row && row.slot === "ORDERS-OPEN-HALF"));
+                const data = await pushShop({ action: "shop" });
+                paintSwitch(!!data.open);
+                paintTimes(!!data.half);
             } catch (err) {
                 paintSwitch(false);
                 document.getElementById("switchNote").textContent = "Could not check if orders are open.";
@@ -291,7 +291,6 @@
                     return;
                 }
                 paintSwitch(!!data.open);
-                paintTimes(!!data.half);
             } catch (err) {
                 document.getElementById("switchNote").textContent = "Could not change it.";
             } finally {
@@ -310,7 +309,6 @@
                     return;
                 }
                 paintTimes(!!data.half);
-                paintSwitch(!!data.open);
             } catch (err) {
                 document.getElementById("timeNote").textContent = "Could not change it.";
             } finally {

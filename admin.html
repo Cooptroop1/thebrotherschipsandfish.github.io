@@ -38,6 +38,7 @@
     <div class="wrap">
         <p><a href="/order.html?v=38">Back to the menu</a></p>
         <h1>Today's queue</h1>
+        <p id="fryLink" hidden style="margin:8px 0 14px"><a href="/fry-board.html">Fry board</a></p>
         <p class="lead" id="note" style="color:#e8c96a;font-size:1.15rem">Log in with the staff email.</p>
         <div id="login">
             <label for="email">Email</label>
@@ -264,6 +265,7 @@
                 document.getElementById("note").textContent = "This login is not staff.";
                 return;
             }
+            document.getElementById("fryLink").hidden = false;
             await loadSwitch();
             const { data } = await client().from("profiles").select("is_admin,name").eq("id", session.user.id).maybeSingle();
             if (!data || !data.is_admin) {

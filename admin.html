@@ -260,7 +260,7 @@
             document.getElementById("login").style.display = "none";
             const session = (await client().auth.getSession()).data.session;
             const email = session && session.user && session.user.email ? session.user.email.toLowerCase() : "";
-            if (email !== "jcooper4888@aol.co.uk") {
+            if (email !== "jcooper4888@aol.co.uk" && email !== "apandy94@yahoo.com") {
                 document.getElementById("note").textContent = "This login is not staff.";
                 return;
             }

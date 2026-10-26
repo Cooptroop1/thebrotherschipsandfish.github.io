@@ -130,7 +130,7 @@
             </span>
         </div>
     </header>
-    <div class="banner" id="banner"><div class="wrap" id="bannerText">Orders are closed.</div></div>
+    <div class="banner" id="banner" hidden><div class="wrap" id="bannerText">Orders are closed.</div></div>
     <main class="wrap">
         <p id="loginNote" hidden></p>
         <div id="gate" class="login panel">
@@ -1285,15 +1285,13 @@
         }
         function paintShop() {
             const words = placeCopy(ordersOpen);
-            const banner = document.getElementById("bannerText");
             const closed = document.getElementById("closedLine");
             const place = document.getElementById("placeLine");
-            if (banner) banner.textContent = words;
             if (closed) closed.textContent = words;
             if (place) place.textContent = words;
             document.getElementById("closedBox").hidden = ordersOpen;
             document.getElementById("openShop").hidden = !ordersOpen;
-            document.getElementById("banner").hidden = ordersOpen;
+            document.getElementById("banner").hidden = true;
             const bar = document.getElementById("bar");
             bar.hidden = !ordersOpen;
             if (!ordersOpen) closeSheet();

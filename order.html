@@ -1303,17 +1303,28 @@
             }
             try {
                 const db = sb();
-                if (!db) throw new Error("closed");
-                const { data, error } = await db.rpc("booked_slots", { for_day: "2099-01-01" });
-                if (error) throw error;
-                const rows = data || [];
-                ordersOpen = rows.some((row) => row.slot === "ORDERS-OPEN" || row.slot === "ORDERS-OPEN-HALF");
-                const openRow = rows.find((row) => row.slot === "ORDERS-OPEN" || row.slot === "ORDERS-OPEN-HALF");
-                if (openRow && (openRow.slot === "ORDERS-OPEN-HALF") !== halfHour) {
-                    halfHour = openRow.slot === "ORDERS-OPEN-HALF";
-                    paintTimes(halfHour);
-                    drawSlots();
+                if (db) {
+                    const { data, error } = await db.rpc("booked_slots", { for_day: "2099-01-01" });
+                    if (!error) {
+                        const rows = data || [];
+                        if (rows.some((row) => row.slot === "ORDERS-OPEN" || row.slot === "ORDERS-OPEN-HALF")) ordersOpen = true;
+                        const openRow = rows.find((row) => row.slot === "ORDERS-OPEN" || row.slot === "ORDERS-OPEN-HALF");
+                        if (openRow && openRow.slot === "ORDERS-OPEN-HALF") halfHour = true;
+                    }
                 }
+                const cfg = window.ORDER_CONFIG || {};
+                if (cfg.payUrl) {
+                    const res = await fetch(cfg.payUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "shop" })
+                    });
+                    const data = await res.json();
+                    if (data && data.open) ordersOpen = true;
+                    if (data && data.half) halfHour = true;
+                }
+                paintTimes(halfHour);
+                drawSlots();
             } catch (err) {
                 ordersOpen = false;
             }
@@ -1326,7 +1337,7 @@
         paintShop();
         paintWho();
         loadShopFlag();
-        setInterval(loadShopFlag, 20000);
+        setInterval(loadShopFlag, 5000);
         let shownMinute = -1;
         setInterval(() => {
             const mins = ukMinutes();

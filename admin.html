@@ -284,35 +284,14 @@
             const turningOn = button.dataset.open !== "yes";
             button.disabled = true;
             try {
-                const session = (await client().auth.getSession()).data.session;
-                const row = await shopRow();
-                let error = null;
-                if (turningOn) {
-                    if (row && row.status === "cancelled") {
-                        error = (await client().from("orders").update({ status: "new" }).eq("id", row.id)).error;
-                    } else if (!row) {
-                        error = (await client().from("orders").insert({
-                            user_id: session.user.id,
-                            name: "Shop",
-                            address: "Shop",
-                            slot: "ORDERS-OPEN",
-                            day: "2099-01-01",
-                            items: [],
-                            total_pence: 0,
-                            status: "new"
-                        })).error;
-                    }
-                } else if (row && row.status !== "cancelled") {
-                    error = (await client().from("orders").update({ status: "cancelled" }).eq("id", row.id)).error;
-                }
-                if (error) {
-                    const raw = error.message || "Could not change it.";
-                    document.getElementById("switchNote").textContent = /policy|permission|row-level/i.test(raw)
-                        ? "Logged in, but the database blocked the switch. It needs the staff setup run once in Supabase."
-                        : raw;
+                const data = await pushShop({ action: "switch", open: turningOn });
+                if (!data || data.error || data.open !== turningOn) {
+                    document.getElementById("switchNote").textContent = (data && data.error) || "Could not change it.";
+                    if (data && typeof data.open === "boolean") paintSwitch(data.open);
                     return;
                 }
-                paintSwitch(turningOn);
+                paintSwitch(!!data.open);
+                paintTimes(!!data.half);
             } catch (err) {
                 document.getElementById("switchNote").textContent = "Could not change it.";
             } finally {
@@ -324,41 +303,31 @@
             const turningHalf = button.dataset.half !== "yes";
             button.disabled = true;
             try {
-                const session = (await client().auth.getSession()).data.session;
-                let row = await shopRow();
-                let created = false;
-                if (!row) {
-                    const inserted = await client().from("orders").insert({
-                        user_id: session.user.id,
-                        name: "Shop",
-                        address: "Shop",
-                        slot: "ORDERS-OPEN",
-                        day: "2099-01-01",
-                        items: [],
-                        total_pence: 0,
-                        status: "new"
-                    }).select("id,status,slot").single();
-                    if (inserted.error) throw inserted.error;
-                    row = inserted.data;
-                    created = true;
-                }
-                const patch = { slot: turningHalf ? "ORDERS-OPEN-HALF" : "ORDERS-OPEN" };
-                if (created) patch.status = "cancelled";
-                const { error } = await client().from("orders").update(patch).eq("id", row.id);
-                if (error) {
-                    const raw = error.message || "Could not change it.";
-                    document.getElementById("timeNote").textContent = /policy|permission|row-level/i.test(raw)
-                        ? "Logged in, but the database blocked the switch. It needs the staff setup run once in Supabase."
-                        : raw;
+                const data = await pushShop({ action: "switch", half: turningHalf });
+                if (!data || data.error || data.half !== turningHalf) {
+                    document.getElementById("timeNote").textContent = (data && data.error) || "Could not change it.";
+                    if (data && typeof data.half === "boolean") paintTimes(data.half);
                     return;
                 }
-                paintTimes(turningHalf);
+                paintTimes(!!data.half);
+                paintSwitch(!!data.open);
             } catch (err) {
                 document.getElementById("timeNote").textContent = "Could not change it.";
             } finally {
                 button.disabled = false;
             }
         };
+        async function pushShop(body) {
+            const session = (await client().auth.getSession()).data.session;
+            const cfg = window.ORDER_CONFIG || {};
+            if (!session || !cfg.payUrl) return { error: "Log in first." };
+            const res = await fetch(cfg.payUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+                body: JSON.stringify(body)
+            });
+            return await res.json();
+        }
         document.getElementById("clearDay").onclick = async () => {
             const button = document.getElementById("clearDay");
             button.disabled = true;

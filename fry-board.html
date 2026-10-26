@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Fry board | The Brothers Chips and Fish</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --ink:#120e0b; --gold:#c9a227; --paper:#f4ead8; --card:#1c1713; --line:rgba(201,162,39,.28); --muted:#b9a894; }
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { font-family:"Source Sans 3",system-ui,sans-serif; background:var(--ink); color:var(--paper); }
+        a { color:#e8c96a; }
+        .wrap { width:min(860px, calc(100% - 24px)); margin:0 auto; padding:18px 0 40px; }
+        h1 { font-family:Fraunces,serif; font-size:2rem; }
+        .lead { color:var(--muted); margin:6px 0 16px; }
+        label { display:block; font-weight:700; margin:10px 0 4px; }
+        input { width:100%; max-width:420px; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:12px; font:inherit; }
+        button { border:0; border-radius:999px; background:var(--gold); color:var(--ink); font:inherit; font-weight:700; padding:10px 14px; cursor:pointer; }
+        .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; margin:10px 0; }
+        .muted { color:var(--muted); }
+        .row { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; padding:12px 0; border-top:1px solid var(--line); }
+        .row strong { font-family:Fraunces,serif; font-size:1.2rem; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <p><a href="/admin.html">Back to the queue</a></p>
+        <h1>Fry board</h1>
+        <p class="lead" id="note">Names and emails for prize codes. The public board only shows the name.</p>
+        <div id="login">
+            <label for="email">Email</label>
+            <input id="email" type="email" autocomplete="username">
+            <label for="pass">Password</label>
+            <input id="pass" type="password" autocomplete="current-password">
+            <p style="margin-top:12px"><button id="go" type="button">Log in</button></p>
+        </div>
+        <div class="card" id="listCard" hidden>
+            <div id="list"></div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="order-config.js?v=5"></script>
+    <script>
+        let db = null;
+        function esc(value) {
+            var amp = String.fromCharCode(38);
+            return String(value == null ? "" : value).replace(/[&<>"]/g, function (ch) {
+                if (ch === amp) return amp + "amp;";
+                if (ch === "<") return amp + "lt;";
+                if (ch === ">") return amp + "gt;";
+                return amp + "quot;";
+            });
+        }
+        function client() {
+            const cfg = window.ORDER_CONFIG || {};
+            if (!cfg.url || !cfg.anonKey || !window.supabase) return null;
+            if (!db) db = window.supabase.createClient(cfg.url, cfg.anonKey);
+            return db;
+        }
+        async function loadFry() {
+            const session = (await client().auth.getSession()).data.session;
+            const list = document.getElementById("list");
+            if (!session) return;
+            try {
+                const res = await fetch("https://brothers-pay.vercel.app/api/fry", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+                    body: JSON.stringify({ action: "entries" })
+                });
+                const data = await res.json();
+                const rows = data.rows || [];
+                if (!rows.length) { list.textContent = "No fry names yet."; return; }
+                list.innerHTML = rows.map((row) => "<div class='row'><span><strong>" + esc(row.name) + "</strong><br><span class='muted'>" + esc(row.email || "no email yet") + "</span><br>" + row.orders + " sent · " + row.score + " pts</span><button type='button' data-drop='" + esc(row.name) + "'>Take off</button></div>").join("");
+                list.querySelectorAll("[data-drop]").forEach((button) => {
+                    button.onclick = async () => {
+                        const name = button.getAttribute("data-drop");
+                        if (!window.confirm("Take " + name + " off the board?")) return;
+                        button.disabled = true;
+                        const gone = await fetch("https://brothers-pay.vercel.app/api/fry", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+                            body: JSON.stringify({ action: "drop", name: name })
+                        });
+                        const result = await gone.json();
+                        if (result.error) {
+                            document.getElementById("note").textContent = result.error;
+                            button.disabled = false;
+                            return;
+                        }
+                        await loadFry();
+                    };
+                });
+            } catch (err) {
+                list.textContent = "Could not load the fry names.";
+            }
+        }
+        async function openBoard() {
+            document.getElementById("login").style.display = "none";
+            const session = (await client().auth.getSession()).data.session;
+            const email = session && session.user && session.user.email ? session.user.email.toLowerCase() : "";
+            if (email !== "jcooper4888@aol.co.uk" && email !== "apandy94@yahoo.com") {
+                document.getElementById("note").textContent = "This login is not staff.";
+                return;
+            }
+            const { data } = await client().from("profiles").select("is_admin").eq("id", session.user.id).maybeSingle();
+            if (!data || !data.is_admin) {
+                document.getElementById("note").textContent = "This account is not marked as staff.";
+                return;
+            }
+            document.getElementById("listCard").hidden = false;
+            await loadFry();
+        }
+        document.getElementById("go").onclick = async () => {
+            const note = document.getElementById("note");
+            note.textContent = "Checking...";
+            const sb = client();
+            if (!sb) { note.textContent = "Login is not switched on yet."; return; }
+            const { error } = await sb.auth.signInWithPassword({
+                email: document.getElementById("email").value.trim(),
+                password: document.getElementById("pass").value
+            });
+            if (error) { note.textContent = error.message; return; }
+            await openBoard();
+        };
+        const ready = client();
+        if (ready) ready.auth.getSession().then(({ data }) => { if (data.session) openBoard(); });
+    </script>
+</body>
+</html>

@@ -285,12 +285,15 @@
             button.disabled = true;
             try {
                 const data = await pushShop({ action: "switch", open: turningOn });
-                if (!data || data.error || data.open !== turningOn) {
-                    document.getElementById("switchNote").textContent = (data && data.error) || "Could not change it.";
-                    if (data && typeof data.open === "boolean") paintSwitch(data.open);
+                const again = await pushShop({ action: "shop" });
+                const openNow = !!(again && again.open);
+                if (!data || data.error || openNow !== turningOn) {
+                    document.getElementById("switchNote").textContent = (data && data.error) || "It did not stay on. Press it again.";
+                    paintSwitch(openNow);
                     return;
                 }
-                paintSwitch(!!data.open);
+                paintSwitch(openNow);
+                document.getElementById("switchNote").textContent = openNow ? "Orders are open. The menu is on." : "Orders are closed. The menu is hidden.";
             } catch (err) {
                 document.getElementById("switchNote").textContent = "Could not change it.";
             } finally {

@@ -85,26 +85,43 @@
     .hero {
       min-height: 70vh;
       display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
       background:
         radial-gradient(1200px 400px at 20% 0%, rgba(201,162,39,0.35), transparent 50%),
         linear-gradient(#2a2118, #120e0b);
       color: #f3efe6;
-      padding: 28px 0 36px;
+      padding: 32px 0 40px;
     }
+    .hero-grid { width: min(1040px, 100%); margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 28px; align-items: start; }
+    .lb-card { background: rgba(18,14,11,0.78); border: 1px solid rgba(201,162,39,0.5); border-radius: 16px; padding: 16px 16px 8px; }
+    .lb-card h2 { margin: 0; font-size: 1.7rem; }
+    .lb-note { margin: 6px 0 0; color: #b9a894; font-size: 0.85rem; }
+    .lb, .lb-head { list-style: none; margin: 12px 0 0; padding: 0; }
+    .lb-head, .lb li { display: grid; grid-template-columns: 28px minmax(0, 1fr) 52px 58px; gap: 8px; align-items: center; }
+    .lb-head { color: #b9a894; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; }
+    .lb-head span:nth-child(n+3), .lb .nums { text-align: right; }
+    .lb li { padding: 9px 0; border-top: 1px solid rgba(201,162,39,0.28); }
+    .lb .rank { font-family: Fraunces, Georgia, serif; color: var(--gold); font-size: 1.25rem; }
+    .lb .who { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lb .nums b { display: block; font-family: Fraunces, Georgia, serif; font-size: 1.15rem; line-height: 1; }
+    @media (max-width: 800px) { .hero-grid { grid-template-columns: 1fr; } }
     .hero h1 { font-size: clamp(2.6rem, 8vw, 4rem); line-height: 0.95; margin: 8px 0; max-width: 10ch; }
     .kicker { color: var(--gold); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
     .back { color: #e8c96a; font-weight: 700; font-size: 0.85rem; text-decoration: none; }
     .stats { display: grid; gap: 8px; }
     .stat { display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 8px; }
     .stat b { font-family: Fraunces, Georgia, serif; font-size: 1.6rem; }
-    ul.plain { margin: 0; padding-left: 18px; }
+    .board { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .board li { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+    .auth { display: grid; gap: 8px; max-width: 360px; margin-top: 8px; }
+    .auth label { font-size: 0.8rem; color: #b9a894; }
+    .auth input { min-height: 44px; border-radius: 8px; border: 1px solid var(--gold); background: #1c1612; color: #f3efe6; padding: 8px 10px; }
     .box-item { text-align: left; }
   </style>
 </head>
 <body>
   <div id="app"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/order-config.js?v=5"></script>
   <script>
     const SPEC = { msPerGameMin: 1800, msPerFrySec: 200, perfectFrom: 110, perfectTo: 140, burnAt: 150 };
     const OPEN = 16 * 60;
@@ -183,7 +200,7 @@
         stock, holding: emptyHold(), box: emptyBox(), coated: null, armed: null,
         orders: [dealOne(), dealOne()], index: 0,
         served: 0, wasted: 0, mistakes: 0, score: 0,
-        note: "4 o'clock. First ticket.", tone: "info", armReset: false
+        note: "4 o'clock. First ticket.", tone: "info", armReset: false, startId: ""
       };
     }
 
@@ -252,13 +269,85 @@
       return h > 0 ? h + "h " + m + "m to close" : m + "m to close";
     }
 
+    const FRY_URL = "https://brothers-pay.vercel.app/api/fry";
+    let client = null;
+    let session = null;
+    let accountName = "";
+    let authMsg = "";
+    let boardRows = [];
+    let boardNote = "";
+
+    function sb() {
+      const cfg = window.ORDER_CONFIG || {};
+      if (!cfg.url || !cfg.anonKey || !window.supabase) return null;
+      if (!client) client = window.supabase.createClient(cfg.url, cfg.anonKey);
+      return client;
+    }
+    function cleanName(raw) {
+      const name = String(raw || "").replace(/[^A-Za-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 16);
+      return name.length >= 2 ? name : "";
+    }
+    async function loadAccount() {
+      const db = sb();
+      session = null;
+      accountName = "";
+      if (!db) return;
+      const got = await db.auth.getSession();
+      const live = got.data.session;
+      if (!live) return;
+      session = live;
+      const { data } = await db.from("profiles").select("name").eq("id", live.user.id).maybeSingle();
+      accountName = cleanName((data && data.name) || (live.user.user_metadata && live.user.user_metadata.name) || "");
+    }
+    async function loadBoard() {
+      const res = await fetch(FRY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "board" })
+      });
+      const data = await res.json();
+      boardRows = (data && data.rows) || [];
+      if (data && data.error) boardNote = data.error;
+    }
+
     function startFry() {
-      const stop = state.stop;
-      state = fresh();
-      state.stop = stop;
-      state.phase = "play";
-      state.note = "4 o'clock. First ticket.";
+      if (!session || !session.access_token) {
+        authMsg = "Log in with the same email you use to order.";
+        state.phase = "intro";
+        paint(true);
+        return;
+      }
+      if (!accountName) {
+        authMsg = "Your account needs a name before it can go on the board.";
+        state.phase = "intro";
+        paint(true);
+        return;
+      }
+      authMsg = "Opening the fry...";
       paint(true);
+      fetch(FRY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+        body: JSON.stringify({ action: "start" })
+      }).then((res) => res.json()).then((data) => {
+        if (!data || data.error || !data.start) {
+          authMsg = (data && data.error) || "Could not start the fry.";
+          state.phase = "intro";
+          paint(true);
+          return;
+        }
+        const stop = state.stop;
+        state = fresh();
+        state.stop = stop;
+        state.phase = "play";
+        state.startId = data.start;
+        state.note = "4 o'clock. First ticket.";
+        paint(true);
+      }).catch(() => {
+        authMsg = "Could not start the fry.";
+        state.phase = "intro";
+        paint(true);
+      });
     }
     function armPlain(id) {
       if (state.stock[id] < 1) { say("No " + LABELS[id].toLowerCase() + " left.", "bad"); paint(true); return; }
@@ -370,10 +459,30 @@
       paint(true);
     }
     function finish() {
+      if (state.phase === "done") return;
       state.phase = "done";
       state.clock = END;
+      boardNote = state.served > 0 ? "Saving your score..." : "Box at least one order to get on the board.";
       say(state.served > 0 ? state.served + " boxed. Hatch is shut." : "Shift's over. Hatch is shut.", state.served > 0 ? "info" : "bad");
       paint(true);
+      const token = session && session.access_token;
+      const job = state.served > 0 && token && state.startId
+        ? fetch(FRY_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+            body: JSON.stringify({ action: "score", start_id: state.startId, orders: state.served, score: state.score, name: accountName })
+          }).then((res) => res.json())
+        : Promise.resolve(null);
+      job.then((data) => {
+        if (data && data.rows) boardRows = data.rows;
+        if (data && data.error) boardNote = data.error;
+        else if (data && data.ok) boardNote = "On the board.";
+        if (!data || !data.rows) return loadBoard();
+      }).catch(() => {
+        boardNote = "Could not save that score.";
+      }).then(() => {
+        if (state.phase === "done") paint(true);
+      });
     }
 
     function esc(s) {
@@ -383,19 +492,38 @@
         .replace(/>/g, "\u0026gt;")
         .replace(/"/g, "\u0026quot;");
     }
+    function boardHtml() {
+      if (!boardRows.length) return '<p class="lb-note">No scores yet.</p>';
+      return '<div class="lb-head"><span></span><span>Name</span><span>Sent</span><span>Points</span></div><ol class="lb">' +
+        boardRows.map((row, i) => '<li><span class="rank">' + (i + 1) + '</span><span class="who">' + esc(row.name) + '</span><span class="nums"><b>' + row.orders + '</b></span><span class="nums"><b>' + row.score + '</b></span></li>').join("") +
+        '</ol>';
+    }
     function choice(id, label, count, on) {
       return '<button class="choice' + (on ? " on" : "") + '" data-act="arm" data-id="' + id + '"><b>' + esc(label) + '</b><span>' + count + '</span></button>';
     }
 
     function shell() {
       if (state.phase === "intro") {
-        return '<div class="hero"><div class="wrap">' +
+        return '<div class="hero"><div class="hero-grid"><div>' +
           '<p class="kicker">Mobile fish and chips · Norfolk</p>' +
           '<h1>On the fryer</h1>' +
           '<p>No prep. The van is set and the range is hot. From 4 until 7. Three pans. 2:00 is perfect.</p>' +
-          '<p><button class="btn gold" data-act="start">Start frying</button></p>' +
+          (session
+            ? '<p>Signed in as ' + esc(accountName || "your account") + '. Same login as ordering. That name goes on the board.</p>' +
+              '<p><button class="btn gold" data-act="start">Start frying</button></p>' +
+              '<p><button class="btn alt" data-act="logout">Log out</button></p>'
+            : '<div class="auth">' +
+              '<label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="email">' +
+              '<label for="loginPass">Password</label><input id="loginPass" type="password" autocomplete="current-password">' +
+              '<button class="btn gold" data-act="auth">Log in</button>' +
+              '<p class="hint">Same login as ordering. The board shows the name on that account.</p>' +
+              '<p class="hint"><a href="/order.html?v=38">New here? Sign up on the order page.</a></p>' +
+              '</div>') +
+          (authMsg ? '<p class="hint">' + esc(authMsg) + '</p>' : "") +
           '<p><a class="back" href="/">Back to the van</a></p>' +
-          '</div></div>';
+          '</div><aside class="lb-card"><p class="kicker">Short fry</p><h2>Leaderboard</h2><p class="lb-note">Most orders sent. Same number, higher points sit above.</p>' +
+          boardHtml() +
+          '</aside></div></div>';
       }
       const order = state.orders[state.index];
       const next = state.orders[state.index + 1];
@@ -435,7 +563,11 @@
           '<div class="stat"><span>Boxes sent back</span><b>' + state.mistakes + '</b></div></div>' +
           '<button class="btn" data-act="start">Fry again</button>' +
           '<a class="btn alt" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none" href="https://clover-gem-acre-timber.grok.me/">Try the extended shift</a>' +
-          '<p class="hint">The extended shift is the full day: prep from 11, the drive, then the fry.</p></section>'
+          '<p class="hint">The extended shift is the full day. It does not go on this board.</p>' +
+          '<h2>Leaderboard</h2>' +
+          boardHtml() +
+          (boardNote ? '<p class="hint">' + esc(boardNote) + '</p>' : '') +
+          '</section>'
         : '<section><h2>Ticket ' + (state.index + 1) + '</h2><p class="hint">' + (next ? "Next: " + esc(next.title) : "Keep going until 7.") + '</p>' +
           '<h3 class="display" style="margin:0;font-size:1.6rem">' + esc(order.title) + '</h3><ul class="plain">' + lines(order).map((l) => "<li>" + esc(l) + "</li>").join("") + '</ul>' +
           (short ? '<p class="bad">' + esc(short) + '</p>' : '') + '</section>' +
@@ -498,7 +630,29 @@
       const el = event.target.closest("[data-act]");
       if (!el || el.disabled) return;
       const act = el.getAttribute("data-act");
-      if (act === "start" || act === "over") { state = fresh(); if (act === "start") startFry(); else { state.phase = "intro"; paint(true); } return; }
+      if (act === "logout") {
+        const db = sb();
+        session = null;
+        accountName = "";
+        authMsg = "";
+        state.phase = "intro";
+        if (db) db.auth.signOut().then(() => paint(true));
+        else paint(true);
+        return;
+      }
+      if (act === "auth") {
+        const db = sb();
+        const email = String((document.getElementById("loginEmail") || {}).value || "").trim();
+        const password = (document.getElementById("loginPass") || {}).value || "";
+        if (!db) { authMsg = "Login is not switched on yet."; paint(true); return; }
+        if (email.indexOf("@") < 1 || password.length < 6) { authMsg = "Use the email and password from ordering."; paint(true); return; }
+        db.auth.signInWithPassword({ email: email, password: password }).then((result) => {
+          if (result.error) { authMsg = result.error.message || "Could not log in."; paint(true); return; }
+          return loadAccount().then(() => { authMsg = ""; paint(true); });
+        }).catch(() => { authMsg = "Could not log in."; paint(true); });
+        return;
+      }
+      if (act === "start" || act === "over") { if (act === "start") startFry(); else { state = fresh(); state.phase = "intro"; paint(true); } return; }
       if (state.phase !== "play" && act !== "start") return;
       if (act === "arm") {
         const id = el.getAttribute("data-id");
@@ -539,6 +693,7 @@
       requestAnimationFrame(loop);
     }
     paint(true);
+    loadAccount().then(() => loadBoard()).then(() => { if (state.phase === "intro") paint(true); });
     requestAnimationFrame(loop);
   </script>
 </body>

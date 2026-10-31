@@ -1278,10 +1278,10 @@
             const day = londonWeekday();
             const where = { Wednesday: "Rashes Green, Toftwood", Thursday: "Swanton Morley Village Hall" };
             if (open && where[day]) return "Pickup from " + where[day] + ". Tap + to add. £15 minimum, then pick a time.";
-            if (open && day === "Friday") return "Friday pickup at Dereham Hockey Club. Greenfields Road, left into Honeysuckle Drive, through the gates on the right into the car park. Tap + to add. £15 minimum, then pick a time.";
+            if (open && day === "Friday") return "Friday pickup at Dereham Hockey Club, 16:00–19:00. Greenfields Road, left into Honeysuckle Drive, through the gates on the right into the car park. Tap + to add. £15 minimum, then pick a time.";
             if (open) return "Pickup tonight. Tap + to add. £15 minimum, then pick a time.";
             if (where[day]) return "Orders are closed. " + day + " pickup is " + where[day] + ", when orders are switched on.";
-            if (day === "Friday") return "Orders are closed. Friday pickup is Dereham Hockey Club. Greenfields Road, left into Honeysuckle Drive, through the gates on the right.";
+            if (day === "Friday") return "Orders are closed. Friday pickup is Dereham Hockey Club, 16:00–19:00. Greenfields Road, left into Honeysuckle Drive, through the gates on the right.";
             return "Orders are closed today. We open Wednesday at Rashes Green, Toftwood, Thursday at Swanton Morley Village Hall, and Friday at Dereham Hockey Club.";
         }
         function paintShop() {

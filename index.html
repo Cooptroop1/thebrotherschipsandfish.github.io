@@ -641,21 +641,38 @@
             }).catch(function () {});
             var pins = { Wednesday: [52.6679644, 0.9489703], Thursday: [52.7133017, 0.9819041], Friday: [52.676854, 0.956835] };
             var toftwood = [52.6679644, 0.9489703];
+            var rings = [];
+            var deliveryOn = false;
+            var savedAreas = {};
+            function showRing(day) {
+                rings.forEach(function (ring) { map.removeLayer(ring); });
+                rings = [];
+                if (!deliveryOn) return;
+                var area = savedAreas[day];
+                var pin = pins[day];
+                if (!area || !pin || !area.miles) return;
+                rings.push(L.circle(pin, { radius: area.miles * 1609.34, color: "#c9a227", weight: 2, fillColor: "#c9a227", fillOpacity: 0.12 }).addTo(map));
+                if (day === "Friday" && area.toftwood) {
+                    rings.push(L.circle(toftwood, { radius: area.miles * 1609.34, color: "#2f6fed", weight: 2, fillColor: "#2f6fed", fillOpacity: 0.12 }).addTo(map));
+                }
+            }
+            document.querySelectorAll("[data-stop]").forEach(function (card) {
+                card.addEventListener("click", function () {
+                    var id = card.getAttribute("data-stop");
+                    var stop = stops.filter(function (row) { return row.id === id; })[0];
+                    if (stop) showRing(stop.day);
+                });
+            });
             fetch("https://brothers-pay.vercel.app/api/pay", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ action: "areas" })
             }).then(function (res) { return res.json(); }).then(function (data) {
-                var areas = data && data.areas;
-                if (!areas) return;
-                Object.keys(pins).forEach(function (day) {
-                    var area = areas[day];
-                    if (!area || !area.miles) return;
-                    L.circle(pins[day], { radius: area.miles * 1609.34, color: "#c9a227", weight: 2, fillColor: "#c9a227", fillOpacity: 0.12 }).addTo(map);
-                });
-                if (areas.Friday && areas.Friday.toftwood && areas.Friday.miles) {
-                    L.circle(toftwood, { radius: areas.Friday.miles * 1609.34, color: "#2f6fed", weight: 2, fillColor: "#2f6fed", fillOpacity: 0.12 }).addTo(map);
-                }
+                if (!data || !data.delivery || !data.areas) return;
+                deliveryOn = true;
+                savedAreas = data.areas;
+                var today = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", weekday: "long" }).format(new Date());
+                showRing(today);
             }).catch(function () {});
         })();
     </script>

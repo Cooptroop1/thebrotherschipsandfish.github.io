@@ -5,6 +5,7 @@
      crossorigin="anonymous"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <meta name="description" content="The Brothers Chips and Fish — family-run mobile fish and chip van in Breckland, Norfolk. Cod, haddock and hand-cut chips. 5-star hygiene. Wednesdays Toftwood, Thursdays Swanton Morley, Fridays Dereham Hockey Club.">
     <meta name="keywords" content="fish and chips, Breckland, Dereham, Toftwood, Swanton Morley, mobile food van, Norfolk, cod, haddock, chips">
     <title>The Brothers Chips and Fish | Mobile fish & chips, Breckland</title>
@@ -205,6 +206,11 @@
         .day { color: var(--gold); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: .78rem; }
         .stop h3 { font-family: Fraunces, serif; font-size: 1.35rem; margin: 8px 0 6px; }
         .stop p { color: var(--muted); }
+        .stop { cursor: pointer; }
+        #vanmap { height: 440px; border-radius: 16px; border: 1px solid var(--line); margin-top: 16px; background: #d5e4ef; }
+        .van-pop { font-family: "Source Sans 3", system-ui, sans-serif; line-height: 1.35; }
+        .van-pop b { font-family: Fraunces, serif; font-size: 1.05rem; }
+        .van-pop a { color: #8a6a12; font-weight: 700; }
         .hygiene {
             display: grid; grid-template-columns: 1.1fr .9fr; gap: 28px; align-items: center;
         }
@@ -248,6 +254,7 @@
             .topbar-inner { flex-direction: column; align-items: flex-start; }
             .gallery, .menu-cols, .stops, .trust, .hygiene { grid-template-columns: 1fr; }
             .hero { min-height: 72vh; }
+            #vanmap { height: 320px; }
             .card img { height: 240px; }
         }
         .cod-ticker { padding: 28px 0 0; }
@@ -479,24 +486,25 @@
                 <h2>Hours & locations</h2>
                 <p class="lead">Weekly stops. Follow Facebook or Instagram if a pitch moves.</p>
                 <div class="stops">
-                    <article class="stop">
+                    <article class="stop" data-stop="wed">
                         <p class="day">Wednesday</p>
                         <h3>Rashes Green, Toftwood</h3>
                         <p>16:00–18:00</p>
                     </article>
-                    <article class="stop">
+                    <article class="stop" data-stop="thu">
                         <p class="day">Thursday</p>
                         <h3>Swanton Morley Village Hall</h3>
                         <p>16:00–19:30</p>
                     </article>
-                    <article class="stop">
+                    <article class="stop" data-stop="fri">
                         <p class="day">Friday</p>
                         <h3>Dereham Hockey Club</h3>
                         <p>16:00–19:00</p>
                         <p>Greenfields Road, then left into Honeysuckle Drive. Through the gates on the right, into the car park. From the One Stop on Norwich Road.</p>
-                        <img src="/images/friday-hockey.jpg?v=2" alt="Map from the One Stop on Norwich Road, along Greenfields Road, left into Honeysuckle Drive, and through the gates into the hockey club car park." style="width:100%;border-radius:12px;margin-top:12px">
                     </article>
                 </div>
+                <div id="vanmap"></div>
+                <p class="lead" style="margin-top:10px">Tap a day or a pin, then Directions. Your phone opens the route.</p>
                 <p class="social" style="margin-top:22px">
                     <a href="https://www.facebook.com/share/19FBsP2ERr/?mibextid=wwXIfr">Facebook</a>
                     ·
@@ -577,6 +585,45 @@
                 if (!d || !d.gbp_per_lb) return;
                 lb.innerHTML = "£" + Number(d.gbp_per_lb).toFixed(2) + " <small>a lb</small>";
             }).catch(function () {});
+        })();
+    </script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        (function () {
+            var box = document.getElementById("vanmap");
+            if (!box || !window.L) return;
+            var stops = [
+                { id: "wed", day: "Wednesday", name: "Rashes Green, Toftwood", time: "16:00–18:00", lat: 52.6679644, lon: 0.9489703 },
+                { id: "thu", day: "Thursday", name: "Swanton Morley Village Hall", time: "16:00–19:30", lat: 52.7133017, lon: 0.9819041 },
+                { id: "fri", day: "Friday", name: "Dereham Hockey Club", time: "16:00–19:00", lat: 52.67751, lon: 0.957702 }
+            ];
+            var map = L.map(box, { scrollWheelZoom: false });
+            L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+            var icon = L.divIcon({
+                className: "",
+                html: '<div style="width:18px;height:18px;border-radius:50%;background:#c9a227;border:3px solid #120e0b"></div>',
+                iconSize: [18, 18],
+                iconAnchor: [9, 9],
+                popupAnchor: [0, -12]
+            });
+            var markers = {};
+            stops.forEach(function (stop) {
+                var link = "https://www.google.com/maps/dir/?api=1&destination=" + stop.lat + "," + stop.lon;
+                var html = '<div class="van-pop"><b>' + stop.day + '</b><br>' + stop.name + '<br>' + stop.time + '<br><a href="' + link + '" target="_blank" rel="noopener">Directions</a></div>';
+                markers[stop.id] = L.marker([stop.lat, stop.lon], { icon: icon }).addTo(map).bindPopup(html);
+            });
+            map.fitBounds(stops.map(function (stop) { return [stop.lat, stop.lon]; }), { padding: [36, 36] });
+            document.querySelectorAll("[data-stop]").forEach(function (card) {
+                card.addEventListener("click", function () {
+                    var marker = markers[card.getAttribute("data-stop")];
+                    if (!marker) return;
+                    map.flyTo(marker.getLatLng(), 16);
+                    marker.openPopup();
+                });
+            });
         })();
     </script>
 </body>

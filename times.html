@@ -18,6 +18,10 @@
         input, select { width:100%; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:12px; font:inherit; }
         .pair { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
         button { border:0; border-radius:999px; background:var(--gold); color:var(--ink); font:inherit; font-weight:700; padding:10px 14px; cursor:pointer; }
+        button.off { background:#3a3328; color:var(--paper); }
+        .switch { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+        .switch p { color:var(--muted); margin-top:4px; }
+        .switch h2 { font-family:Fraunces,serif; font-size:1.25rem; }
         .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; margin:10px 0; }
         .dayline { padding:8px 0; border-top:1px solid var(--line); }
     </style>
@@ -26,13 +30,51 @@
     <div class="wrap">
         <p><a href="/admin.html">Back to the queue</a></p>
         <h1>Opening times</h1>
-        <p class="lead" id="note">Pick a day. One shift, or two if you are out twice.</p>
+        <p class="lead" id="note">Pick a day. One shift, or two if you are out twice. The order switches live here so the queue stays clear.</p>
         <div id="login">
             <label for="email">Email</label>
             <input id="email" type="email" autocomplete="username">
             <label for="pass">Password</label>
             <input id="pass" type="password" autocomplete="current-password">
             <p style="margin-top:12px"><button id="go" type="button">Log in</button></p>
+        </div>
+        <div id="switches" hidden>
+            <div class="card">
+                <div class="switch">
+                    <div>
+                        <h2>Pickup orders</h2>
+                        <p id="switchNote">Pickup is closed.</p>
+                    </div>
+                    <button id="switchBtn" type="button" class="off">Turn pickup on</button>
+                </div>
+            </div>
+            <div class="card">
+                <div class="switch">
+                    <div>
+                        <h2>Pickup times</h2>
+                        <p id="timeNote">Every 15 minutes.</p>
+                    </div>
+                    <button id="timeBtn" type="button">Turn 15 minute times off</button>
+                </div>
+            </div>
+            <div class="card">
+                <div class="switch">
+                    <div>
+                        <h2>Delivery orders</h2>
+                        <p id="deliveryNote">Delivery is closed.</p>
+                    </div>
+                    <button id="deliveryBtn" type="button" class="off">Turn delivery on</button>
+                </div>
+            </div>
+            <div class="card">
+                <div class="switch">
+                    <div>
+                        <h2>Delivery times</h2>
+                        <p id="deliveryTimeNote">Every 15 minutes.</p>
+                    </div>
+                    <button id="deliveryTimeBtn" type="button">Turn 15 minute times off</button>
+                </div>
+            </div>
         </div>
         <div class="card" id="editor" hidden>
             <label for="day">Day</label>
@@ -88,6 +130,85 @@
             if (!from || !to || from >= to) return false;
             return { from: from, to: to };
         }
+        async function shopRow() {
+            const { data, error } = await client().from("orders").select("id,status,slot").eq("day", "2099-01-01").in("slot", ["ORDERS-OPEN", "ORDERS-OPEN-HALF"]).order("created_at", { ascending: false });
+            if (error) throw error;
+            const rows = data || [];
+            return rows.find((row) => row.status !== "cancelled") || rows[0] || null;
+        }
+        async function deliveryFlag() {
+            const { data, error } = await client().from("deliveries").select("id,status,slot").eq("day", "2099-01-01").in("slot", ["DELIVERY-OPEN", "DELIVERY-OPEN-HALF"]).order("created_at", { ascending: false });
+            if (error) throw error;
+            const rows = data || [];
+            return rows.find((row) => row.status !== "cancelled") || rows[0] || null;
+        }
+        function paintOpen(button, note, open, onText, offText) {
+            button.dataset.open = open ? "yes" : "no";
+            button.className = open ? "" : "off";
+            button.textContent = open ? "Turn off" : "Turn on";
+            note.textContent = open ? onText : offText;
+        }
+        function paintGap(button, note, half, who) {
+            button.dataset.half = half ? "yes" : "no";
+            button.className = half ? "" : "off";
+            button.textContent = half ? "Turn 15 minute times on" : "Turn 15 minute times off";
+            note.textContent = half
+                ? who + " shows 16:30, 17:00, 17:30, 18:00, 18:30 and 19:00."
+                : who + " shows every 15 minutes from 16:30 to 19:00.";
+        }
+        async function loadSwitches() {
+            document.getElementById("switches").hidden = false;
+            try {
+                const row = await shopRow();
+                paintOpen(document.getElementById("switchBtn"), document.getElementById("switchNote"), !!(row && row.status !== "cancelled"), "Pickup is open.", "Pickup is closed.");
+                paintGap(document.getElementById("timeBtn"), document.getElementById("timeNote"), !!(row && row.slot === "ORDERS-OPEN-HALF"), "Pickup");
+            } catch (err) {
+                document.getElementById("switchNote").textContent = "Could not check pickup.";
+            }
+            try {
+                const row = await deliveryFlag();
+                paintOpen(document.getElementById("deliveryBtn"), document.getElementById("deliveryNote"), !!(row && row.status !== "cancelled"), "Delivery is open. £5 on top.", "Delivery is closed.");
+                paintGap(document.getElementById("deliveryTimeBtn"), document.getElementById("deliveryTimeNote"), !!(row && row.slot === "DELIVERY-OPEN-HALF"), "Delivery");
+            } catch (err) {
+                document.getElementById("deliveryNote").textContent = "Delivery is not set up yet. The SQL still needs to be run in Supabase.";
+            }
+        }
+        async function setOpen(table, slotName, turningOn, noteId) {
+            const session = (await client().auth.getSession()).data.session;
+            const row = table === "orders" ? await shopRow() : await deliveryFlag();
+            let error = null;
+            if (turningOn) {
+                if (row && row.status === "cancelled") error = (await client().from(table).update({ status: "new" }).eq("id", row.id)).error;
+                else if (!row) error = (await client().from(table).insert({
+                    user_id: session.user.id, name: "Shop", address: "Shop", slot: slotName, day: "2099-01-01", items: [], total_pence: 0, status: "new"
+                })).error;
+            } else if (row && row.status !== "cancelled") {
+                error = (await client().from(table).update({ status: "cancelled" }).eq("id", row.id)).error;
+            }
+            if (error) document.getElementById(noteId).textContent = error.message || "Could not change it.";
+            return !error;
+        }
+        async function setGap(table, openName, halfName, turningHalf, noteId) {
+            const session = (await client().auth.getSession()).data.session;
+            let row = table === "orders" ? await shopRow() : await deliveryFlag();
+            let created = false;
+            if (!row) {
+                const inserted = await client().from(table).insert({
+                    user_id: session.user.id, name: "Shop", address: "Shop", slot: openName, day: "2099-01-01", items: [], total_pence: 0, status: "new"
+                }).select("id,status,slot").single();
+                if (inserted.error) {
+                    document.getElementById(noteId).textContent = inserted.error.message || "Could not change it.";
+                    return false;
+                }
+                row = inserted.data;
+                created = true;
+            }
+            const patch = { slot: turningHalf ? halfName : openName };
+            if (created) patch.status = "cancelled";
+            const { error } = await client().from(table).update(patch).eq("id", row.id);
+            if (error) document.getElementById(noteId).textContent = error.message || "Could not change it.";
+            return !error;
+        }
         async function openTimes() {
             const session = (await client().auth.getSession()).data.session;
             const email = session && session.user && session.user.email ? session.user.email.toLowerCase() : "";
@@ -106,10 +227,40 @@
             const data = await res.json();
             hours = (data && data.hours) || {};
             document.getElementById("editor").hidden = false;
+            document.getElementById("switches").hidden = false;
             day.value = "Wednesday";
             fillDay();
             paintSaved();
+            await loadSwitches();
         }
+        document.getElementById("switchBtn").onclick = async () => {
+            const button = document.getElementById("switchBtn");
+            button.disabled = true;
+            const ok = await setOpen("orders", "ORDERS-OPEN", button.dataset.open !== "yes", "switchNote");
+            button.disabled = false;
+            if (ok) await loadSwitches();
+        };
+        document.getElementById("deliveryBtn").onclick = async () => {
+            const button = document.getElementById("deliveryBtn");
+            button.disabled = true;
+            const ok = await setOpen("deliveries", "DELIVERY-OPEN", button.dataset.open !== "yes", "deliveryNote");
+            button.disabled = false;
+            if (ok) await loadSwitches();
+        };
+        document.getElementById("timeBtn").onclick = async () => {
+            const button = document.getElementById("timeBtn");
+            button.disabled = true;
+            const ok = await setGap("orders", "ORDERS-OPEN", "ORDERS-OPEN-HALF", button.dataset.half !== "yes", "timeNote");
+            button.disabled = false;
+            if (ok) await loadSwitches();
+        };
+        document.getElementById("deliveryTimeBtn").onclick = async () => {
+            const button = document.getElementById("deliveryTimeBtn");
+            button.disabled = true;
+            const ok = await setGap("deliveries", "DELIVERY-OPEN", "DELIVERY-OPEN-HALF", button.dataset.half !== "yes", "deliveryTimeNote");
+            button.disabled = false;
+            if (ok) await loadSwitches();
+        };
         document.getElementById("day").onchange = fillDay;
         document.getElementById("save").onclick = async () => {
             const note = document.getElementById("note");

@@ -805,6 +805,7 @@
                 held = "";
                 left = 0;
                 clearInterval(holdClock);
+                if (service === "delivery") rememberDrop();
                 const barHold = document.getElementById("holdBar");
                 if (barHold) barHold.hidden = true;
                 clearBasket();
@@ -871,6 +872,7 @@
             }
             picked = "";
             stopHold();
+            if (service === "delivery") rememberDrop();
             document.getElementById("payChoice").hidden = true;
             document.getElementById("laterCode").value = "";
             clearBasket();
@@ -937,6 +939,7 @@
                 return;
             }
             if (!count() || foodPence() < MIN_PENCE) return;
+            if (service === "delivery") fillDrop();
             loadTaken().finally(() => {
                 document.getElementById("bg").classList.add("open");
                 document.getElementById("sheet").classList.add("open");
@@ -966,6 +969,7 @@
             serviceChosen = true;
             halfHour = deliveryHalf;
             paintTimes(halfHour);
+            fillDrop();
             paintShop();
             draw();
         };
@@ -1097,9 +1101,12 @@
                 return;
             }
             if (mode === "held" && paid && paid.ok) {
+                const delivery = (paid.kind || service) === "delivery";
                 kicker.textContent = "Time held";
-                title.textContent = "Pickup at " + clock(paid.slot || "");
-                body.textContent = "This time is yours. Pay when you collect. No card payment was taken.";
+                title.textContent = (delivery ? "Delivery at " : "Pickup at ") + clock(paid.slot || "");
+                body.textContent = delivery
+                    ? "This time is yours. Pay the driver when it arrives. No card payment was taken."
+                    : "This time is yours. Pay when you collect. No card payment was taken.";
                 (paid.items || []).forEach((item) => {
                     const row = document.createElement("div");
                     row.className = "line";
@@ -1113,7 +1120,7 @@
                 const total = document.createElement("div");
                 total.className = "line";
                 const totalName = document.createElement("strong");
-                totalName.textContent = "To pay on collection";
+                totalName.textContent = delivery ? "To pay the driver" : "To pay on collection";
                 const totalPrice = document.createElement("strong");
                 totalPrice.textContent = money(paid.total_pence || 0);
                 total.append(totalName, totalPrice);
@@ -1125,6 +1132,7 @@
                             at: Date.now(),
                             ok: true,
                             mode: "held",
+                            kind: delivery ? "delivery" : "pickup",
                             slot: paid.slot,
                             name: paid.name || "",
                             address: paid.address || "",
@@ -1144,9 +1152,12 @@
                 box.scrollIntoView({ block: "start" });
                 return;
             }
+            const delivery = (paid.kind || service) === "delivery";
             kicker.textContent = "Order confirmed";
-            title.textContent = "Pickup at " + clock(paid.slot || "");
-            body.textContent = "Paid. We'll have this ready for " + (paid.slot ? clock(paid.slot) : "your time") + ".";
+            title.textContent = (delivery ? "Delivery at " : "Pickup at ") + clock(paid.slot || "");
+            body.textContent = delivery
+                ? "Paid. We'll bring this for " + (paid.slot ? clock(paid.slot) : "your time") + "."
+                : "Paid. We'll have this ready for " + (paid.slot ? clock(paid.slot) : "your time") + ".";
             (paid.items || []).forEach((item) => {
                 const row = document.createElement("div");
                 row.className = "line";
@@ -1167,13 +1178,14 @@
             list.appendChild(total);
             if (paid.name) who.textContent = paid.name + (paid.address ? " · " + paid.address : "");
             extra.textContent = paid.saved === false
-                ? "Paid. If it is not on the staff list in a minute, tell us when you collect."
+                ? (delivery ? "Paid. If it is not on the delivery list in a minute, tell the driver." : "Paid. If it is not on the staff list in a minute, tell us when you collect.")
                 : "";
             if (remember) {
                 try {
                     sessionStorage.setItem("brothers-order", JSON.stringify({
                         at: Date.now(),
                         ok: true,
+                        kind: delivery ? "delivery" : "pickup",
                         slot: paid.slot,
                         name: paid.name || "",
                         address: paid.address || "",
@@ -1393,6 +1405,23 @@
             const line = (document.getElementById("dropLine").value || "").trim();
             const post = (document.getElementById("dropPost").value || "").trim();
             return (line + (post ? ", " + post : "")).slice(0, 240);
+        }
+        function rememberDrop() {
+            const line = (document.getElementById("dropLine").value || "").trim();
+            const post = (document.getElementById("dropPost").value || "").trim();
+            if ((line + post).length < 8) return;
+            try { localStorage.setItem("brothers-drop", JSON.stringify({ line: line, post: post })); } catch (err) {}
+        }
+        function fillDrop() {
+            const line = document.getElementById("dropLine");
+            const post = document.getElementById("dropPost");
+            if (!line || !post || line.value || post.value) return;
+            try {
+                const saved = JSON.parse(localStorage.getItem("brothers-drop") || "null");
+                if (!saved) return;
+                line.value = saved.line || "";
+                post.value = saved.post || "";
+            } catch (err) {}
         }
         function paintShop() {
             if (service === "pickup" && !ordersOpen) serviceChosen = false;

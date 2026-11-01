@@ -160,7 +160,7 @@
         <p id="holdBar" class="holdbar" hidden></p>
         <div id="closedBox">
             <h1>Orders are closed</h1>
-            <p class="lead" id="closedLine">Orders are closed today. We open Wednesday at Rashes Green, Toftwood, Thursday at Swanton Morley Village Hall, and Friday at Dereham Hockey Club.</p>
+            <p class="lead" id="closedLine">Orders are closed today. Orders for pickup on Wednesday at Rashes Green, Toftwood. Thursday at Swanton Morley Village Hall. Friday at Dereham Hockey Club.</p>
         </div>
         <div id="openShop" hidden>
         <div class="chips">
@@ -1285,17 +1285,26 @@
         }
         function placeCopy(open) {
             const day = londonWeekday();
-            const where = { Wednesday: "Rashes Green, Toftwood", Thursday: "Swanton Morley Village Hall" };
+            const where = {
+                Wednesday: "Rashes Green, Toftwood",
+                Thursday: "Swanton Morley Village Hall",
+                Friday: "Dereham Hockey Club"
+            };
             const times = hoursText(day);
+            const place = where[day];
+            const when = times ? ", " + times : "";
+            if (place && open) {
+                const extra = day === "Friday" ? " Greenfields Road, left into Honeysuckle Drive, through the gates on the right into the car park." : "";
+                return "Orders for pickup at " + place + when + "." + extra + " Tap + to add. £15 minimum, then pick a time.";
+            }
+            if (place) {
+                const extra = day === "Friday" ? " Greenfields Road, left into Honeysuckle Drive, through the gates on the right." : "";
+                return "Orders are closed. Orders for pickup at " + place + when + ", when they are switched on." + extra;
+            }
             const wed = hoursText("Wednesday");
             const thu = hoursText("Thursday");
             const fri = hoursText("Friday");
-            if (open && where[day]) return "Pickup from " + where[day] + (times ? ", " + times : "") + ". Tap + to add. £15 minimum, then pick a time.";
-            if (open && day === "Friday") return "Friday pickup at Dereham Hockey Club" + (times ? ", " + times : "") + ". Greenfields Road, left into Honeysuckle Drive, through the gates on the right into the car park. Tap + to add. £15 minimum, then pick a time.";
-            if (open) return "Pickup tonight" + (times ? ", " + times : "") + ". Tap + to add. £15 minimum, then pick a time.";
-            if (where[day]) return "Orders are closed. " + day + " pickup is " + where[day] + (times ? ", " + times : "") + ", when orders are switched on.";
-            if (day === "Friday") return "Orders are closed. Friday pickup is Dereham Hockey Club" + (times ? ", " + times : "") + ". Greenfields Road, left into Honeysuckle Drive, through the gates on the right.";
-            return "Orders are closed today. We open Wednesday at Rashes Green, Toftwood" + (wed ? " (" + wed + ")" : "") + ", Thursday at Swanton Morley Village Hall" + (thu ? " (" + thu + ")" : "") + ", and Friday at Dereham Hockey Club" + (fri ? " (" + fri + ")" : "") + ".";
+            return "Orders are closed today. Orders for pickup on Wednesday at Rashes Green, Toftwood" + (wed ? ", " + wed : "") + ". Thursday at Swanton Morley Village Hall" + (thu ? ", " + thu : "") + ". Friday at Dereham Hockey Club" + (fri ? ", " + fri : "") + ".";
         }
         function paintShop() {
             const words = placeCopy(ordersOpen);

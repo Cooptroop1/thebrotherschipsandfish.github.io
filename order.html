@@ -794,7 +794,7 @@
         }
         let picked = "";
         function selectSlot(slot) {
-            if (!ordersOpen || booking || !sessionUser) return;
+            if (!serving() || booking || !sessionUser) return;
             if (shownSlots().indexOf(slot) === -1) {
                 document.getElementById("hold").textContent = "That time is not on tonight.";
                 return;
@@ -860,7 +860,7 @@
             showOrder(data, "held", true);
         }
         async function takeSlot(slot) {
-            if (!ordersOpen || booking || !sessionUser) return;
+            if (!serving() || booking || !sessionUser) return;
             if (shownSlots().indexOf(slot) === -1) {
                 document.getElementById("hold").textContent = "That time is not on tonight.";
                 return;
@@ -911,7 +911,7 @@
             document.getElementById("hold").textContent = "Card payment could not open on this page. The time is still held.";
         }
         function openSheet() {
-            if (!ordersOpen) return;
+            if (!serving()) return;
             if (!sessionUser) {
                 askAuth("Log in or sign up to book a time.");
                 return;
@@ -987,7 +987,7 @@
             const el = document.getElementById("who");
             const on = !!sessionUser;
             document.getElementById("account").hidden = on;
-            document.getElementById("gate").hidden = on || (ordersOpen && !formHeld);
+            document.getElementById("gate").hidden = on || ((ordersOpen || deliveryOpen) && !formHeld);
             if (on) authSay("");
             document.getElementById("logout").hidden = !on;
             const staff = on && (String(sessionUser.email || "").toLowerCase() === "jcooper4888@aol.co.uk" || String(sessionUser.email || "").toLowerCase() === "apandy94@yahoo.com");

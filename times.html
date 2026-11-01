@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Opening times | The Brothers Chips and Fish</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --ink:#120e0b; --gold:#c9a227; --paper:#f4ead8; --card:#1c1713; --line:rgba(201,162,39,.28); --muted:#b9a894; }
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { font-family:"Source Sans 3",system-ui,sans-serif; background:var(--ink); color:var(--paper); }
+        a { color:#e8c96a; }
+        .wrap { width:min(640px, calc(100% - 24px)); margin:0 auto; padding:18px 0 40px; }
+        h1 { font-family:Fraunces,serif; font-size:2rem; }
+        .lead { color:var(--muted); margin:6px 0 16px; }
+        label { display:block; font-weight:700; margin:10px 0 4px; }
+        input, select { width:100%; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:12px; font:inherit; }
+        .pair { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        button { border:0; border-radius:999px; background:var(--gold); color:var(--ink); font:inherit; font-weight:700; padding:10px 14px; cursor:pointer; }
+        .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; margin:10px 0; }
+        .dayline { padding:8px 0; border-top:1px solid var(--line); }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <p><a href="/admin.html">Back to the queue</a></p>
+        <h1>Opening times</h1>
+        <p class="lead" id="note">Pick a day. One shift, or two if you are out twice.</p>
+        <div id="login">
+            <label for="email">Email</label>
+            <input id="email" type="email" autocomplete="username">
+            <label for="pass">Password</label>
+            <input id="pass" type="password" autocomplete="current-password">
+            <p style="margin-top:12px"><button id="go" type="button">Log in</button></p>
+        </div>
+        <div class="card" id="editor" hidden>
+            <label for="day">Day</label>
+            <select id="day"></select>
+            <p class="lead" style="margin-top:14px">First shift</p>
+            <div class="pair">
+                <div><label for="from1">From</label><input id="from1" type="time"></div>
+                <div><label for="to1">To</label><input id="to1" type="time"></div>
+            </div>
+            <p class="lead" style="margin-top:14px">Second shift, if you need one</p>
+            <div class="pair">
+                <div><label for="from2">From</label><input id="from2" type="time"></div>
+                <div><label for="to2">To</label><input id="to2" type="time"></div>
+            </div>
+            <p style="margin-top:14px"><button id="save" type="button">Save this day</button></p>
+            <div id="saved" style="margin-top:12px"></div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="order-config.js?v=5"></script>
+    <script>
+        const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+        const PAY = "https://brothers-pay.vercel.app/api/pay";
+        let db = null;
+        let hours = {};
+        function client() {
+            const cfg = window.ORDER_CONFIG || {};
+            if (!cfg.url || !cfg.anonKey || !window.supabase) return null;
+            if (!db) db = window.supabase.createClient(cfg.url, cfg.anonKey);
+            return db;
+        }
+        function textOf(list) {
+            return (list || []).map((shift) => shift.from + "–" + shift.to).join(" and ");
+        }
+        function paintSaved() {
+            document.getElementById("saved").innerHTML = DAYS.map((day) => {
+                const line = textOf(hours[day]);
+                return "<p class='dayline'><strong>" + day + "</strong><br>" + (line || "Not out") + "</p>";
+            }).join("");
+        }
+        function fillDay() {
+            const day = document.getElementById("day").value;
+            const list = hours[day] || [];
+            document.getElementById("from1").value = list[0] ? list[0].from : "";
+            document.getElementById("to1").value = list[0] ? list[0].to : "";
+            document.getElementById("from2").value = list[1] ? list[1].from : "";
+            document.getElementById("to2").value = list[1] ? list[1].to : "";
+        }
+        function readShift(fromId, toId) {
+            const from = document.getElementById(fromId).value;
+            const to = document.getElementById(toId).value;
+            if (!from && !to) return null;
+            if (!from || !to || from >= to) return false;
+            return { from: from, to: to };
+        }
+        async function openTimes() {
+            const session = (await client().auth.getSession()).data.session;
+            const email = session && session.user && session.user.email ? session.user.email.toLowerCase() : "";
+            if (email !== "jcooper4888@aol.co.uk" && email !== "apandy94@yahoo.com") {
+                document.getElementById("note").textContent = "This login is not staff.";
+                return;
+            }
+            document.getElementById("login").style.display = "none";
+            const day = document.getElementById("day");
+            day.innerHTML = DAYS.map((name) => "<option>" + name + "</option>").join("");
+            const res = await fetch(PAY, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "hours" })
+            });
+            const data = await res.json();
+            hours = (data && data.hours) || {};
+            document.getElementById("editor").hidden = false;
+            day.value = "Wednesday";
+            fillDay();
+            paintSaved();
+        }
+        document.getElementById("day").onchange = fillDay;
+        document.getElementById("save").onclick = async () => {
+            const note = document.getElementById("note");
+            const first = readShift("from1", "to1");
+            const second = readShift("from2", "to2");
+            if (first === false || second === false) {
+                note.textContent = "A shift needs a from and a to, and the finish has to be later.";
+                return;
+            }
+            const day = document.getElementById("day").value;
+            const next = {};
+            DAYS.forEach((name) => { if (hours[name]) next[name] = hours[name]; });
+            const shifts = [];
+            if (first) shifts.push(first);
+            if (second) shifts.push(second);
+            if (shifts.length) next[day] = shifts;
+            else delete next[day];
+            note.textContent = "Saving...";
+            const session = (await client().auth.getSession()).data.session;
+            const res = await fetch(PAY, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+                body: JSON.stringify({ action: "set-hours", hours: next })
+            });
+            const data = await res.json();
+            if (!data || data.error) {
+                note.textContent = (data && data.error) || "Could not save.";
+                return;
+            }
+            hours = data.hours || next;
+            note.textContent = day + " saved.";
+            fillDay();
+            paintSaved();
+        };
+        document.getElementById("go").onclick = async () => {
+            const note = document.getElementById("note");
+            note.textContent = "Checking...";
+            const sb = client();
+            if (!sb) { note.textContent = "Login is not switched on yet."; return; }
+            const { error } = await sb.auth.signInWithPassword({
+                email: document.getElementById("email").value.trim(),
+                password: document.getElementById("pass").value
+            });
+            if (error) { note.textContent = error.message; return; }
+            await openTimes();
+        };
+        const ready = client();
+        if (ready) ready.auth.getSession().then(({ data }) => { if (data.session) openTimes(); });
+    </script>
+</body>
+</html>

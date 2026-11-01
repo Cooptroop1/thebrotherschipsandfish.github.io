@@ -489,17 +489,17 @@
                     <article class="stop" data-stop="wed">
                         <p class="day">Wednesday</p>
                         <h3>Rashes Green, Toftwood</h3>
-                        <p>16:00–18:00</p>
+                        <p id="time-Wednesday">16:00–18:00</p>
                     </article>
                     <article class="stop" data-stop="thu">
                         <p class="day">Thursday</p>
                         <h3>Swanton Morley Village Hall</h3>
-                        <p>16:00–19:30</p>
+                        <p id="time-Thursday">16:00–19:30</p>
                     </article>
                     <article class="stop" data-stop="fri">
                         <p class="day">Friday</p>
                         <h3>Dereham Hockey Club</h3>
-                        <p>16:00–19:00</p>
+                        <p id="time-Friday">16:00–19:00</p>
                         <p>Greenfields Road, then left into Honeysuckle Drive. Through the gates on the right, into the car park. From the One Stop on Norwich Road.</p>
                     </article>
                 </div>
@@ -623,6 +623,22 @@
                     marker.openPopup();
                 });
             });
+            fetch("https://brothers-pay.vercel.app/api/pay", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "hours" })
+            }).then(function (res) { return res.json(); }).then(function (data) {
+                const hours = data && data.hours;
+                if (!hours) return;
+                stops.forEach(function (stop) {
+                    const list = hours[stop.day] || [];
+                    const time = list.length ? list.map(function (shift) { return shift.from + "–" + shift.to; }).join(" and ") : "No time set";
+                    const line = document.getElementById("time-" + stop.day);
+                    if (line) line.textContent = time;
+                    const link = "https://www.google.com/maps/dir/?api=1&destination=" + stop.lat + "," + stop.lon;
+                    markers[stop.id].setPopupContent('<div class="van-pop"><b>' + stop.day + '</b><br>' + stop.name + '<br>' + time + '<br><a href="' + link + '" target="_blank" rel="noopener">Directions</a></div>');
+                });
+            }).catch(function () {});
         })();
     </script>
 </body>

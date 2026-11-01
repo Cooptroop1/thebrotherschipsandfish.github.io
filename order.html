@@ -936,12 +936,16 @@
         document.getElementById("choosePickup").onclick = function () {
             service = "pickup";
             serviceChosen = true;
+            halfHour = pickupHalf;
+            paintTimes(halfHour);
             paintShop();
             draw();
         };
         document.getElementById("chooseDelivery").onclick = function () {
             service = "delivery";
             serviceChosen = true;
+            halfHour = deliveryHalf;
+            paintTimes(halfHour);
             paintShop();
             draw();
         };
@@ -1319,6 +1323,8 @@
         let service = "pickup";
         let serviceChosen = false;
         let halfHour = false;
+        let pickupHalf = false;
+        let deliveryHalf = false;
         function shownSlots() { return halfHour ? HALF : SLOTS; }
         function londonWeekday() {
             return new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", weekday: "long" }).format(new Date());
@@ -1407,12 +1413,7 @@
                 if (error) throw error;
                 const rows = data || [];
                 ordersOpen = rows.some((row) => row.slot === "ORDERS-OPEN" || row.slot === "ORDERS-OPEN-HALF");
-                const openRow = rows.find((row) => row.slot === "ORDERS-OPEN" || row.slot === "ORDERS-OPEN-HALF");
-                if (openRow && (openRow.slot === "ORDERS-OPEN-HALF") !== halfHour) {
-                    halfHour = openRow.slot === "ORDERS-OPEN-HALF";
-                    paintTimes(halfHour);
-                    drawSlots();
-                }
+                pickupHalf = rows.some((row) => row.slot === "ORDERS-OPEN-HALF");
             } catch (err) {
                 ordersOpen = false;
             }
@@ -1420,12 +1421,20 @@
                 const db = sb();
                 if (db) {
                     const { data, error } = await db.rpc("booked_deliveries", { for_day: "2099-01-01" });
-                    deliveryOpen = !error && (data || []).some((row) => row.slot === "DELIVERY-OPEN");
+                    const rows = error ? [] : (data || []);
+                    deliveryOpen = rows.some((row) => row.slot === "DELIVERY-OPEN" || row.slot === "DELIVERY-OPEN-HALF");
+                    deliveryHalf = rows.some((row) => row.slot === "DELIVERY-OPEN-HALF");
                 }
             } catch (err) {
                 deliveryOpen = false;
             }
             paintShop();
+            const half = service === "delivery" ? deliveryHalf : pickupHalf;
+            if (half !== halfHour) {
+                halfHour = half;
+                paintTimes(halfHour);
+                drawSlots();
+            }
         }
         document.getElementById("pay").hidden = true;
         loadBasket();

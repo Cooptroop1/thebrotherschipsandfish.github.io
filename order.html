@@ -186,7 +186,7 @@
         <div class="grab"></div>
         <p class="day">This evening</p>
         <h2>Pick a pickup</h2>
-        <p class="lead">Tap a free time. Then pay now on card, or pay later if we gave you a code. A card payment holds the time for 5 minutes.</p>
+        <p class="lead">Tap a free time. It closes 15 minutes before, if nobody has booked it. Then pay now on card, or pay later if we gave you a code. A card payment holds the time for 5 minutes.</p>
         <p class="lead" id="ukClock">UK time</p>
         <div class="grid" id="slots"></div>
         <p class="hold" id="hold">Pick a time. Pay now holds it for 5 minutes while the card form is open. Coming back does not start the timer again.</p>
@@ -300,7 +300,7 @@
             const bits = String(slot).split(":");
             return (Number(bits[0]) + 12) * 60 + Number(bits[1]);
         }
-        function slotPassed(slot) { return ukMinutes() >= slotMinutes(slot); }
+        function slotPassed(slot) { return ukMinutes() >= slotMinutes(slot) - 15; }
         const basket = {};
         const extras = {};
         let held = "";
@@ -653,7 +653,7 @@
                 btn.className = "slot" + ((mine || chosen) ? " on" : "") + ((passed || gone) ? " taken" : "");
                 const mins = mine ? Math.floor(left / 60) : 0;
                 const secs = mine ? left % 60 : 0;
-                btn.innerHTML = clock(slot) + "<small>" + (passed ? "Gone" : gone ? "Taken" : mine ? ("Held " + mins + ":" + String(secs).padStart(2, "0")) : "Free") + "</small>";
+                btn.innerHTML = clock(slot) + "<small>" + (passed ? "Closed" : gone ? "Taken" : mine ? ("Held " + mins + ":" + String(secs).padStart(2, "0")) : "Free") + "</small>";
                 if (!passed && !gone) btn.onclick = () => selectSlot(slot);
                 root.appendChild(btn);
             });

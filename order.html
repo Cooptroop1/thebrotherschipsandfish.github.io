@@ -204,8 +204,8 @@
         </div>
         <div id="totals"></div>
         <div id="cardBox" hidden>
+            <button class="go ghost" id="cardBack" type="button">Back</button>
             <div id="cardMount"></div>
-            <button class="mini" id="cardBack" type="button">Keep the food and go back</button>
         </div>
         <button class="go" id="pay" type="button" disabled>Pay</button>
     </div>
@@ -800,6 +800,16 @@
             if (msg) msg.textContent = "";
             drawSlots();
         }
+        function stopHold() {
+            held = "";
+            left = 0;
+            clearInterval(holdClock);
+            const barHold = document.getElementById("holdBar");
+            if (barHold) {
+                barHold.hidden = true;
+                barHold.textContent = "";
+            }
+        }
         async function sendLater() {
             if (!picked || booking) return;
             const code = document.getElementById("laterCode").value;
@@ -820,6 +830,7 @@
                 return;
             }
             picked = "";
+            stopHold();
             document.getElementById("payChoice").hidden = true;
             document.getElementById("laterCode").value = "";
             clearBasket();

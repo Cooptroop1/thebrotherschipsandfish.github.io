@@ -58,6 +58,12 @@
         const SLOTS = ["4:30","4:45","5:00","5:15","5:30","5:45","6:00","6:15","6:30","6:45","7:00"];
         const CLOCK = {"4:30":"16:30","4:45":"16:45","5:00":"17:00","5:15":"17:15","5:30":"17:30","5:45":"17:45","6:00":"18:00","6:15":"18:15","6:30":"18:30","6:45":"18:45","7:00":"19:00"};
         function clock(slot) { return CLOCK[slot] || slot || ""; }
+        function isTime(slot) { return SLOTS.indexOf(slot) !== -1 || /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(String(slot || "")); }
+        function slotMinutes(slot) {
+            const shown = CLOCK[slot] || String(slot || "");
+            const bits = shown.split(":");
+            return (Number(bits[0]) || 0) * 60 + (Number(bits[1]) || 0);
+        }
         const NEXT = { "held": "cooking", "unpaid": "cooking", "new": "cooking", "cooking": "ready", "ready": "collected" };
         const LABEL = { "held": "Start it", "unpaid": "Start it", "new": "Start it", "cooking": "Ready", "ready": "Collected" };
         let db = null;
@@ -95,7 +101,7 @@
         }
         async function saveStatus(id, status, slot) {
             const patch = { status: status };
-            if (status === "cancelled" && SLOTS.indexOf(slot) !== -1) {
+            if (status === "cancelled" && isTime(slot)) {
                 patch.slot = "off-" + slot + "-" + Date.now() + "-" + String(id).replace(/-/g, "").slice(0, 8);
             }
             const { error } = await client().from("orders").update(patch).eq("id", id);
@@ -104,14 +110,14 @@
         function clearedTime(order) {
             const match = /^off-(\d{1,2}:\d{2})-(\d+)/.exec(order.slot || "");
             if (match) return { time: match[1], at: Number(match[2]) };
-            if (order.status === "cancelled" && SLOTS.indexOf(order.slot) !== -1) return { time: order.slot, at: Date.now() };
+            if (order.status === "cancelled" && isTime(order.slot)) return { time: order.slot, at: Date.now() };
             return null;
         }
         async function freeStuck(orders) {
             const sb = client();
             const jobs = [];
             orders.forEach((order) => {
-                if (order.status !== "cancelled" || SLOTS.indexOf(order.slot) === -1) return;
+                if (order.status !== "cancelled" || !isTime(order.slot)) return;
                 const next = "off-" + order.slot + "-" + Date.now() + "-" + String(order.id).replace(/-/g, "").slice(0, 8);
                 const previous = order.slot;
                 order.slot = next;
@@ -148,7 +154,7 @@
             const seen = {};
             rows.forEach((order) => { seen[order.slot] = true; });
             later.forEach((order) => { if (!seen[order.slot]) rows.push(order); });
-            rows.sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
+            rows.sort((a, b) => slotMinutes(a.slot) - slotMinutes(b.slot));
             const list = document.getElementById("list");
             list.innerHTML = "";
             if (!rows.length) {

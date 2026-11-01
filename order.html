@@ -805,7 +805,7 @@
                 held = "";
                 left = 0;
                 clearInterval(holdClock);
-                if (service === "delivery") rememberDrop();
+                if (service === "delivery") await rememberDrop();
                 const barHold = document.getElementById("holdBar");
                 if (barHold) barHold.hidden = true;
                 clearBasket();
@@ -872,7 +872,7 @@
             }
             picked = "";
             stopHold();
-            if (service === "delivery") rememberDrop();
+            if (service === "delivery") await rememberDrop();
             document.getElementById("payChoice").hidden = true;
             document.getElementById("laterCode").value = "";
             clearBasket();
@@ -1406,16 +1406,24 @@
             const post = (document.getElementById("dropPost").value || "").trim();
             return (line + (post ? ", " + post : "")).slice(0, 240);
         }
-        function rememberDrop() {
+        async function rememberDrop() {
             const line = (document.getElementById("dropLine").value || "").trim();
             const post = (document.getElementById("dropPost").value || "").trim();
             if ((line + post).length < 8) return;
             try { localStorage.setItem("brothers-drop", JSON.stringify({ line: line, post: post })); } catch (err) {}
+            const db = sb();
+            if (!db || !sessionUser) return;
+            const { data, error } = await db.auth.updateUser({ data: { drop_line: line, drop_post: post } });
+            if (!error && data && data.user) sessionUser = data.user;
         }
         function fillDrop() {
             const line = document.getElementById("dropLine");
             const post = document.getElementById("dropPost");
-            if (!line || !post || line.value || post.value) return;
+            if (!line || !post) return;
+            const meta = (sessionUser && sessionUser.user_metadata) || {};
+            if (!line.value && meta.drop_line) line.value = meta.drop_line;
+            if (!post.value && meta.drop_post) post.value = meta.drop_post;
+            if (line.value || post.value) return;
             try {
                 const saved = JSON.parse(localStorage.getItem("brothers-drop") || "null");
                 if (!saved) return;

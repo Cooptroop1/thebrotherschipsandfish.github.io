@@ -38,7 +38,7 @@
     <div class="wrap">
         <p><a href="/order.html?v=38">Back to the menu</a></p>
         <h1>Today's queue</h1>
-        <p id="fryLink" hidden style="margin:8px 0 14px"><a href="/fry-board.html">Fry board</a> · <a href="/times.html">Opening times</a></p>
+        <p id="fryLink" hidden style="margin:8px 0 14px"><a href="/fry-board.html">Fry board</a> · <a href="/times.html">Opening times</a> · <a href="/delivery.html">Delivery orders</a></p>
         <p class="lead" id="note" style="color:#e8c96a;font-size:1.15rem">Log in with the staff email.</p>
         <div id="login">
             <label for="email">Email</label>
@@ -56,6 +56,15 @@
                     <p id="switchNote">Orders are closed.</p>
                 </div>
                 <button id="switchBtn" type="button">Turn orders on</button>
+            </div>
+        </div>
+        <div class="card" id="deliveryCard" hidden>
+            <div class="switch">
+                <div>
+                    <h2>Delivery orders</h2>
+                    <p id="deliveryNote">Delivery is closed.</p>
+                </div>
+                <button id="deliveryBtn" type="button" class="off">Turn delivery on</button>
             </div>
         </div>
         <div class="card" id="timeCard" hidden>
@@ -124,6 +133,23 @@
                 ? "Orders are open. Customers can order for pickup."
                 : "Orders are closed. Customers just see a closed message.";
         }
+        async function deliveryRow() {
+            const { data, error } = await client().from("deliveries").select("id,status,slot").eq("day", "2099-01-01").eq("slot", "DELIVERY-OPEN").order("created_at", { ascending: false });
+            if (error) throw error;
+            const rows = data || [];
+            return rows.find((row) => row.status !== "cancelled") || rows[0] || null;
+        }
+        function paintDelivery(open) {
+            const note = document.getElementById("deliveryNote");
+            const button = document.getElementById("deliveryBtn");
+            document.getElementById("deliveryCard").hidden = false;
+            button.dataset.open = open ? "yes" : "no";
+            button.className = open ? "" : "off";
+            button.textContent = open ? "Turn delivery off" : "Turn delivery on";
+            note.textContent = open
+                ? "Delivery is open. Same menu, £5 on top. The driver uses the delivery page."
+                : "Delivery is closed.";
+        }
         async function shopRow() {
             const { data, error } = await client().from("orders").select("id,status,slot").eq("day", "2099-01-01").in("slot", ["ORDERS-OPEN", "ORDERS-OPEN-HALF"]).order("created_at", { ascending: false });
             if (error) throw error;
@@ -146,6 +172,13 @@
                 const row = await shopRow();
                 paintSwitch(!!(row && row.status !== "cancelled"));
                 paintTimes(!!(row && row.slot === "ORDERS-OPEN-HALF"));
+                try {
+                    const delivery = await deliveryRow();
+                    paintDelivery(!!(delivery && delivery.status !== "cancelled"));
+                } catch (err) {
+                    paintDelivery(false);
+                    document.getElementById("deliveryNote").textContent = "Delivery is not set up yet. The SQL still needs to be run in Supabase.";
+                }
             } catch (err) {
                 paintSwitch(false);
                 document.getElementById("switchNote").textContent = "Could not check if orders are open.";
@@ -315,6 +348,46 @@
                 paintSwitch(turningOn);
             } catch (err) {
                 document.getElementById("switchNote").textContent = "Could not change it.";
+            } finally {
+                button.disabled = false;
+            }
+        };
+        document.getElementById("deliveryBtn").onclick = async () => {
+            const button = document.getElementById("deliveryBtn");
+            const turningOn = button.dataset.open !== "yes";
+            button.disabled = true;
+            try {
+                const session = (await client().auth.getSession()).data.session;
+                const row = await deliveryRow();
+                let error = null;
+                if (turningOn) {
+                    if (row && row.status === "cancelled") {
+                        error = (await client().from("deliveries").update({ status: "new" }).eq("id", row.id)).error;
+                    } else if (!row) {
+                        error = (await client().from("deliveries").insert({
+                            user_id: session.user.id,
+                            name: "Shop",
+                            address: "Shop",
+                            slot: "DELIVERY-OPEN",
+                            day: "2099-01-01",
+                            items: [],
+                            total_pence: 0,
+                            status: "new"
+                        })).error;
+                    }
+                } else if (row && row.status !== "cancelled") {
+                    error = (await client().from("deliveries").update({ status: "cancelled" }).eq("id", row.id)).error;
+                }
+                if (error) {
+                    const raw = error.message || "Could not change it.";
+                    document.getElementById("deliveryNote").textContent = /relation|deliveries/i.test(raw)
+                        ? "Delivery is not set up yet. The SQL still needs to be run in Supabase."
+                        : raw;
+                    return;
+                }
+                paintDelivery(turningOn);
+            } catch (err) {
+                document.getElementById("deliveryNote").textContent = "Could not change it. The SQL still needs to be run in Supabase.";
             } finally {
                 button.disabled = false;
             }

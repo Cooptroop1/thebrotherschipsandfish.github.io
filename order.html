@@ -84,7 +84,9 @@
         .hold b { color:var(--gold2); }
         .holdbar { position:sticky; top:64px; z-index:18; background:#241c12; border:1px solid var(--gold); border-radius:12px; padding:10px 12px; margin:12px 0 0; font-weight:700; }
         #holdBar[hidden], #cardBox[hidden], #slots[hidden] { display:none !important; }
-        #cardMount { min-height:420px; margin:8px 0 12px; background:#fff; border-radius:12px; overflow:hidden; }
+        #dropBox label { display:block; font-weight:700; margin:8px 0 4px; }
+        #dropBox input { width:100%; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; }
+        #chooseBox { margin: 8px 0 18px; }
         #chipBg { z-index: 60; }
         #chipAsk { z-index: 70; }
         #loginBg { z-index: 80; }
@@ -162,14 +164,20 @@
             <h1>Orders are closed</h1>
             <p class="lead" id="closedLine">Orders are closed today. Orders for pickup on Wednesday at Rashes Green, Toftwood. Thursday at Swanton Morley Village Hall. Friday at Dereham Hockey Club.</p>
         </div>
+        <div id="chooseBox" hidden>
+            <h1>Pickup or delivery?</h1>
+            <p class="lead">Same menu. Delivery is £5 on top. Pickup is unchanged.</p>
+            <button class="go" id="choosePickup" type="button">Pickup</button>
+            <button class="go ghost" id="chooseDelivery" type="button">Delivery · £5</button>
+        </div>
         <div id="openShop" hidden>
         <div class="chips">
-            <span class="chip">Pickup</span>
+            <span class="chip" id="modeChip">Pickup</span>
             <span class="chip" id="hoursChip">16:30–19:00</span>
             <span class="chip" id="gapChip">Every 15 min</span>
             <span class="chip">£15 minimum</span>
         </div>
-        <h1>Order for pickup</h1>
+        <h1 id="shopTitle">Order for pickup</h1>
         <p class="lead" id="placeLine">Tap + to add. The basket has to be at least £15 before a time can be booked. Then pick a pickup time. That time is taken straight away.</p>
         <div id="shop">
         <p class="lead" id="bookedNote"></p>
@@ -185,8 +193,14 @@
     <div class="sheet" id="sheet" role="dialog" aria-label="Pick a pickup">
         <div class="grab"></div>
         <p class="day">This evening</p>
-        <h2>Pick a pickup</h2>
-        <p class="lead">Tap a free time. It closes 15 minutes before, if nobody has booked it. Then pay now on card, or pay later if we gave you a code. A card payment holds the time for 5 minutes.</p>
+        <h2 id="sheetTitle">Pick a pickup</h2>
+        <div id="dropBox" hidden>
+            <label for="dropLine">House and street</label>
+            <input id="dropLine" type="text" autocomplete="street-address">
+            <label for="dropPost">Postcode</label>
+            <input id="dropPost" type="text" autocomplete="postal-code">
+        </div>
+        <p class="lead">Tap a free time. Then pay now on card, or pay later if we gave you a code. A card payment holds the time for 5 minutes.</p>
         <p class="lead" id="ukClock">UK time</p>
         <div class="grid" id="slots"></div>
         <p class="hold" id="hold">Pick a time. Pay now holds it for 5 minutes while the card form is open. Coming back does not start the timer again.</p>
@@ -300,7 +314,7 @@
             const bits = String(slot).split(":");
             return (Number(bits[0]) + 12) * 60 + Number(bits[1]);
         }
-        function slotPassed(slot) { return ukMinutes() >= slotMinutes(slot) - 15; }
+        function slotPassed(slot) { return ukMinutes() >= slotMinutes(slot); }
         const basket = {};
         const extras = {};
         let held = "";
@@ -612,9 +626,10 @@
             });
             if (!bits.length) return "<p class='empty'>Nothing in the basket yet.</p>";
             const food = foodPence();
+            const fee = service === "delivery" ? 500 : 0;
             const short = Math.max(0, MIN_PENCE - food);
             const over = canCount() > foodOrders() * 2;
-            const bitsOut = bits.join("") + "<div class='line'><strong>To pay</strong><strong>" + money(food) + "</strong></div>";
+            const bitsOut = bits.join("") + (fee ? "<div class='line'><span>Delivery</span><span>" + money(fee) + "</span></div>" : "") + "<div class='line'><strong>To pay</strong><strong>" + money(food + fee) + "</strong></div>";
             if (over) return bitsOut + "<p class='empty'>Too many drinks. Take some off. 2 with each food order.</p>";
             if (drinkMsg) return bitsOut + "<p class='empty'>" + drinkMsg + "</p>";
             if (short) return bitsOut + "<p class='empty'>Add " + money(short) + " more. £15 minimum to book a time.</p>";
@@ -623,6 +638,7 @@
         function draw() {
             drawMenu();
             const food = foodPence();
+            const fee = service === "delivery" ? 500 : 0;
             const short = Math.max(0, MIN_PENCE - food);
             const over = canCount() > foodOrders() * 2;
             const ready = !short && !over;
@@ -634,7 +650,7 @@
             const deskGo = document.getElementById("deskGo");
             if (deskGo) deskGo.onclick = openSheet;
             const bar = document.getElementById("bar");
-            bar.textContent = !count() ? "Basket is empty" : (over ? "Too many drinks. 2 with each food order." : (short ? ("Add " + money(short) + " to book a time") : (sessionUser ? ("Basket · " + count() + " · " + money(food)) : "Login to book a slot")));
+            bar.textContent = !count() ? "Basket is empty" : (over ? "Too many drinks. 2 with each food order." : (short ? ("Add " + money(short) + " to book a time") : (sessionUser ? ("Basket · " + count() + " · " + money(food + fee)) : "Login to book a slot")));
             document.getElementById("totals").innerHTML = count() ? lines() : "";
             document.getElementById("pay").textContent = count() ? ("Book " + money(food)) : "Add food first";
             document.getElementById("pay").disabled = !count() || !held || over;
@@ -653,7 +669,7 @@
                 btn.className = "slot" + ((mine || chosen) ? " on" : "") + ((passed || gone) ? " taken" : "");
                 const mins = mine ? Math.floor(left / 60) : 0;
                 const secs = mine ? left % 60 : 0;
-                btn.innerHTML = clock(slot) + "<small>" + (passed ? "Closed" : gone ? "Taken" : mine ? ("Held " + mins + ":" + String(secs).padStart(2, "0")) : "Free") + "</small>";
+                btn.innerHTML = clock(slot) + "<small>" + (passed ? "Gone" : gone ? "Taken" : mine ? ("Held " + mins + ":" + String(secs).padStart(2, "0")) : "Free") + "</small>";
                 if (!passed && !gone) btn.onclick = () => selectSlot(slot);
                 root.appendChild(btn);
             });
@@ -717,7 +733,7 @@
         }
         async function resumeHold(forceSheet) {
             if (!sessionUser) return;
-            const data = await payCall({ action: "hold" });
+            const data = await payCall({ action: "hold", mode: service === "delivery" ? "delivery" : "pickup" });
             if (!data || !data.slot || !data.hold_until) return;
             holdUntil = Number(data.hold_until) * 1000;
             left = Math.max(0, Math.ceil((holdUntil - Date.now()) / 1000));
@@ -792,6 +808,10 @@
                 document.getElementById("hold").textContent = "Minimum order is £15 to book a time. Add more food first.";
                 return;
             }
+            if (service === "delivery" && dropAddress().length < 8) {
+                document.getElementById("hold").textContent = "Add the house number, street and postcode.";
+                return;
+            }
             if (taken.has(slot) && !(held === slot && left > 0)) return;
             picked = slot;
             const codeBox = document.getElementById("codeBox");
@@ -821,7 +841,7 @@
             booking = true;
             msg.textContent = "Checking the code...";
             const items = Object.entries(basket).map(([id, n]) => ({ id, qty: n }));
-            const data = await payCall({ action: "later", slot: picked, items, code });
+            const data = await payCall({ action: "later", slot: picked, items, code, mode: service, address: service === "delivery" ? dropAddress() : "" });
             booking = false;
             if (!data || data.error || !data.ok) {
                 msg.textContent = (data && data.error) || "That code is not right.";
@@ -854,13 +874,17 @@
                 document.getElementById("hold").textContent = "Minimum order is £15 to book a time. Add more food first.";
                 return;
             }
+            if (service === "delivery" && dropAddress().length < 8) {
+                document.getElementById("hold").textContent = "Add the house number, street and postcode.";
+                return;
+            }
             if (taken.has(slot) && !(held === slot && left > 0)) return;
             const db = sb();
             if (!db) return;
             booking = true;
             document.getElementById("hold").textContent = "Opening the card payment...";
             const items = Object.entries(basket).map(([id, n]) => ({ id, qty: n }));
-            const data = await payCall({ action: "create", slot, items });
+            const data = await payCall({ action: "create", slot, items, mode: service, address: service === "delivery" ? dropAddress() : "" });
             booking = false;
             if (!data || data.error || (!data.url && !data.client_secret)) {
                 document.getElementById("hold").textContent = (data && data.error) || "Card payment is not switched on yet.";
@@ -909,6 +933,18 @@
             document.getElementById("bg").classList.remove("open");
             document.getElementById("sheet").classList.remove("open");
         }
+        document.getElementById("choosePickup").onclick = function () {
+            service = "pickup";
+            serviceChosen = true;
+            paintShop();
+            draw();
+        };
+        document.getElementById("chooseDelivery").onclick = function () {
+            service = "delivery";
+            serviceChosen = true;
+            paintShop();
+            draw();
+        };
         document.getElementById("payNow").onclick = function () { if (picked) takeSlot(picked); };
         document.getElementById("payLater").onclick = function () {
             const box = document.getElementById("codeBox");
@@ -957,7 +993,7 @@
             const staff = on && (String(sessionUser.email || "").toLowerCase() === "jcooper4888@aol.co.uk" || String(sessionUser.email || "").toLowerCase() === "apandy94@yahoo.com");
             document.getElementById("staffLink").hidden = !staff;
             const bar = document.getElementById("bar");
-            bar.hidden = !ordersOpen;
+            bar.hidden = !serving();
             bar.style.removeProperty("display");
             if (el) el.textContent = on ? ((profile && profile.name) || sessionUser.email) : "";
         }
@@ -982,12 +1018,12 @@
             const db = sb();
             taken = new Set();
             if (!db) return;
-            const { data } = await db.rpc("booked_slots", { for_day: londonDate() });
+            const { data } = await db.rpc(service === "delivery" ? "booked_deliveries" : "booked_slots", { for_day: londonDate() });
             (data || []).forEach((row) => { if (SLOTS.indexOf(row.slot) !== -1) taken.add(row.slot); });
             const cfg = window.ORDER_CONFIG || {};
             if (cfg.payUrl) {
                 try {
-                    const extra = await payCall({ action: "slots" });
+                    const extra = await payCall({ action: "slots", mode: service === "delivery" ? "delivery" : "pickup" });
                     (extra.slots || []).forEach((slot) => taken.add(slot));
                     if (typeof extra.minutes === "number" && extra.minutes >= 0 && extra.minutes < 1440) {
                         clockSkew = extra.minutes - londonMinutes();
@@ -1279,6 +1315,9 @@
             });
         }
         let ordersOpen = false;
+        let deliveryOpen = false;
+        let service = "pickup";
+        let serviceChosen = false;
         let halfHour = false;
         function shownSlots() { return halfHour ? HALF : SLOTS; }
         function londonWeekday() {
@@ -1317,21 +1356,43 @@
             const fri = hoursText("Friday");
             return "Orders are closed today. Orders for pickup on Wednesday at Rashes Green, Toftwood" + (wed ? ", " + wed : "") + ". Thursday at Swanton Morley Village Hall" + (thu ? ", " + thu : "") + ". Friday at Dereham Hockey Club" + (fri ? ", " + fri : "") + ".";
         }
+        function serving() {
+            return (ordersOpen || deliveryOpen) && serviceChosen;
+        }
+        function dropAddress() {
+            const line = (document.getElementById("dropLine").value || "").trim();
+            const post = (document.getElementById("dropPost").value || "").trim();
+            return (line + (post ? ", " + post : "")).slice(0, 240);
+        }
         function paintShop() {
+            if (service === "pickup" && !ordersOpen) serviceChosen = false;
+            if (service === "delivery" && !deliveryOpen) serviceChosen = false;
+            if (ordersOpen && !deliveryOpen) { service = "pickup"; serviceChosen = true; }
+            if (!ordersOpen && deliveryOpen) { service = "delivery"; serviceChosen = true; }
             const words = placeCopy(ordersOpen);
             const closed = document.getElementById("closedLine");
             const place = document.getElementById("placeLine");
-            if (closed) closed.textContent = words;
-            if (place) place.textContent = words;
+            if (closed) closed.textContent = deliveryOpen && !ordersOpen ? "Pickup is closed. Delivery is open. Same menu, £5 delivery on top." : words;
+            if (place) place.textContent = service === "delivery" ? "Delivery is £5 on top of the food. £15 minimum of food, then pick a time. The driver uses the address you type." : words;
             const chip = document.getElementById("hoursChip");
             const today = hoursText(londonWeekday());
             if (chip && today) chip.textContent = today;
-            document.getElementById("closedBox").hidden = ordersOpen;
-            document.getElementById("openShop").hidden = !ordersOpen;
+            const modeChip = document.getElementById("modeChip");
+            if (modeChip) modeChip.textContent = service === "delivery" ? "Delivery · £5" : "Pickup";
+            const title = document.getElementById("shopTitle");
+            if (title) title.textContent = service === "delivery" ? "Order for delivery" : "Order for pickup";
+            const sheetTitle = document.getElementById("sheetTitle");
+            if (sheetTitle) sheetTitle.textContent = service === "delivery" ? "Pick a delivery" : "Pick a pickup";
+            const drop = document.getElementById("dropBox");
+            if (drop) drop.hidden = service !== "delivery";
+            const open = serving();
+            document.getElementById("chooseBox").hidden = !(ordersOpen && deliveryOpen && !serviceChosen);
+            document.getElementById("closedBox").hidden = ordersOpen || deliveryOpen;
+            document.getElementById("openShop").hidden = !open;
             document.getElementById("banner").hidden = true;
             const bar = document.getElementById("bar");
-            bar.hidden = !ordersOpen;
-            if (!ordersOpen) closeSheet();
+            bar.hidden = !open;
+            if (!open) closeSheet();
             paintWho();
         }
         function paintTimes(half) {
@@ -1354,6 +1415,15 @@
                 }
             } catch (err) {
                 ordersOpen = false;
+            }
+            try {
+                const db = sb();
+                if (db) {
+                    const { data, error } = await db.rpc("booked_deliveries", { for_day: "2099-01-01" });
+                    deliveryOpen = !error && (data || []).some((row) => row.slot === "DELIVERY-OPEN");
+                }
+            } catch (err) {
+                deliveryOpen = false;
             }
             paintShop();
         }

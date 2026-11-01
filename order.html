@@ -311,8 +311,28 @@
         }
         function ukMinutes() { return (londonMinutes() + clockSkew + 1440) % 1440; }
         function slotMinutes(slot) {
-            const bits = String(slot).split(":");
-            return (Number(bits[0]) + 12) * 60 + Number(bits[1]);
+            const shown = CLOCK[slot] || String(slot || "");
+            const bits = shown.split(":");
+            const hour = Number(bits[0]);
+            const minute = Number(bits[1]);
+            if (!Number.isFinite(hour) || !Number.isFinite(minute)) return 0;
+            return hour * 60 + minute;
+        }
+        function slotId(mins) {
+            const full = String(Math.floor(mins / 60)).padStart(2, "0") + ":" + String(mins % 60).padStart(2, "0");
+            const old = Object.keys(CLOCK).find((id) => CLOCK[id] === full);
+            return old || full;
+        }
+        function slotsFromShifts(shifts, half) {
+            const step = half ? 30 : 15;
+            const out = [];
+            (shifts || []).forEach((shift) => {
+                const start = slotMinutes(shift.from);
+                const end = slotMinutes(shift.to);
+                if (!shift || !shift.from || !shift.to || end < start) return;
+                for (let at = start; at <= end; at += step) out.push(slotId(at));
+            });
+            return out;
         }
         function slotPassed(slot) { return ukMinutes() >= slotMinutes(slot); }
         const basket = {};
@@ -1325,7 +1345,11 @@
         let halfHour = false;
         let pickupHalf = false;
         let deliveryHalf = false;
-        function shownSlots() { return halfHour ? HALF : SLOTS; }
+        function shownSlots() {
+            const built = slotsFromShifts(vanHours[londonWeekday()], halfHour);
+            if (built.length) return built;
+            return halfHour ? HALF : SLOTS;
+        }
         function londonWeekday() {
             return new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", weekday: "long" }).format(new Date());
         }
@@ -1455,6 +1479,7 @@
                 if (data && data.hours) vanHours = data.hours;
             } catch (err) {}
             paintShop();
+            draw();
         }
         loadShopFlag();
         loadVanHours();

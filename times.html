@@ -90,6 +90,13 @@
                 <div><label for="to2">To</label><input id="to2" type="time"></div>
             </div>
             <p style="margin-top:14px"><button id="save" type="button">Save this day</button></p>
+            <p class="lead" id="areaWhere" style="margin-top:18px">Delivery circle</p>
+            <label for="miles">Miles from the van</label>
+            <input id="miles" type="number" min="0.5" max="15" step="0.5">
+            <label id="toftLabel" style="display:none;align-items:center;gap:8px;margin-top:10px">
+                <input id="toftwood" type="checkbox" style="width:auto"> Also Toftwood
+            </label>
+            <p style="margin-top:14px"><button id="saveArea" type="button">Save this circle</button></p>
             <div id="saved" style="margin-top:12px"></div>
         </div>
     </div>
@@ -100,6 +107,12 @@
         const PAY = "https://brothers-pay.vercel.app/api/pay";
         let db = null;
         let hours = {};
+        let areas = { Wednesday: { miles: 2 }, Thursday: { miles: 1 }, Friday: { miles: 2, toftwood: false } };
+        const CENTRES = {
+            Wednesday: "Rashes Green, Toftwood",
+            Thursday: "Swanton Morley Village Hall",
+            Friday: "Dereham Hockey Club"
+        };
         function client() {
             const cfg = window.ORDER_CONFIG || {};
             if (!cfg.url || !cfg.anonKey || !window.supabase) return null;
@@ -122,6 +135,21 @@
             document.getElementById("to1").value = list[0] ? list[0].to : "";
             document.getElementById("from2").value = list[1] ? list[1].from : "";
             document.getElementById("to2").value = list[1] ? list[1].to : "";
+            paintArea();
+        }
+        function paintArea() {
+            const day = document.getElementById("day").value;
+            const area = areas[day] || { miles: "" };
+            const where = document.getElementById("areaWhere");
+            const miles = document.getElementById("miles");
+            const toft = document.getElementById("toftLabel");
+            miles.disabled = !CENTRES[day];
+            miles.value = area.miles || "";
+            toft.style.display = day === "Friday" ? "flex" : "none";
+            document.getElementById("toftwood").checked = !!(area && area.toftwood);
+            where.textContent = CENTRES[day]
+                ? ("Circle around " + CENTRES[day] + ". A postcode outside it cannot order.")
+                : "No van pin on this day, so the circle is not used.";
         }
         function readShift(fromId, toId) {
             const from = document.getElementById(fromId).value;
@@ -226,6 +254,13 @@
             });
             const data = await res.json();
             hours = (data && data.hours) || {};
+            const areaRes = await fetch(PAY, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "areas" })
+            });
+            const areaData = await areaRes.json();
+            if (areaData && areaData.areas) areas = areaData.areas;
             document.getElementById("editor").hidden = false;
             document.getElementById("switches").hidden = false;
             day.value = "Wednesday";
@@ -260,6 +295,38 @@
             const ok = await setGap("deliveries", "DELIVERY-OPEN", "DELIVERY-OPEN-HALF", button.dataset.half !== "yes", "deliveryTimeNote");
             button.disabled = false;
             if (ok) await loadSwitches();
+        };
+        document.getElementById("saveArea").onclick = async () => {
+            const note = document.getElementById("note");
+            const day = document.getElementById("day").value;
+            if (!CENTRES[day]) {
+                note.textContent = "That day has no van pin.";
+                return;
+            }
+            const miles = Math.round(Number(document.getElementById("miles").value) * 10) / 10;
+            if (!miles || miles < 0.5 || miles > 15) {
+                note.textContent = "Set the miles between 0.5 and 15.";
+                return;
+            }
+            const next = {};
+            Object.keys(areas).forEach((name) => { next[name] = areas[name]; });
+            next[day] = { miles: miles };
+            if (day === "Friday") next[day].toftwood = document.getElementById("toftwood").checked;
+            note.textContent = "Saving the circle...";
+            const session = (await client().auth.getSession()).data.session;
+            const res = await fetch(PAY, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+                body: JSON.stringify({ action: "set-areas", areas: next })
+            });
+            const data = await res.json();
+            if (!data || data.error) {
+                note.textContent = (data && data.error) || "Could not save the circle.";
+                return;
+            }
+            areas = data.areas || next;
+            note.textContent = day + " delivers " + miles + " miles from " + CENTRES[day] + (day === "Friday" && next[day].toftwood ? ", including Toftwood." : ".");
+            paintArea();
         };
         document.getElementById("day").onchange = fillDay;
         document.getElementById("save").onclick = async () => {

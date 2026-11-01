@@ -862,7 +862,7 @@
             booking = true;
             msg.textContent = "Checking the code...";
             const items = Object.entries(basket).map(([id, n]) => ({ id, qty: n }));
-            const data = await payCall({ action: "later", slot: picked, items, code, mode: service, address: service === "delivery" ? dropAddress() : "" });
+            const data = await payCall({ action: "later", slot: picked, items, code, mode: service, address: service === "delivery" ? dropAddress() : "", postcode: service === "delivery" ? document.getElementById("dropPost").value : "" });
             booking = false;
             if (!data || data.error || !data.ok) {
                 msg.textContent = (data && data.error) || "That code is not right.";
@@ -906,7 +906,7 @@
             booking = true;
             document.getElementById("hold").textContent = "Opening the card payment...";
             const items = Object.entries(basket).map(([id, n]) => ({ id, qty: n }));
-            const data = await payCall({ action: "create", slot, items, mode: service, address: service === "delivery" ? dropAddress() : "" });
+            const data = await payCall({ action: "create", slot, items, mode: service, address: service === "delivery" ? dropAddress() : "", postcode: service === "delivery" ? document.getElementById("dropPost").value : "" });
             booking = false;
             if (!data || data.error || (!data.url && !data.client_secret)) {
                 document.getElementById("hold").textContent = (data && data.error) || "Card payment is not switched on yet.";
@@ -932,6 +932,20 @@
             }
             document.getElementById("hold").textContent = "Card payment could not open on this page. The time is still held.";
         }
+        async function checkArea() {
+            const post = (document.getElementById("dropPost").value || "").trim();
+            const place = document.getElementById("placeLine");
+            if (post.length < 5) {
+                if (place) place.textContent = "Type the house and the full postcode before you pick a time.";
+                return false;
+            }
+            const data = await payCall({ action: "area", postcode: post });
+            if (!data || data.ok === false || data.error) {
+                if (place) place.textContent = (data && data.error) || "We don't deliver to that postcode today.";
+                return false;
+            }
+            return true;
+        }
         function openSheet() {
             if (!serving()) return;
             if (!sessionUser) {
@@ -939,6 +953,13 @@
                 return;
             }
             if (!count() || foodPence() < MIN_PENCE) return;
+            if (service === "delivery") {
+                checkArea().then((ok) => { if (ok) showTimes(); });
+                return;
+            }
+            showTimes();
+        }
+        function showTimes() {
             if (service === "delivery") fillDrop();
             loadTaken().finally(() => {
                 document.getElementById("bg").classList.add("open");

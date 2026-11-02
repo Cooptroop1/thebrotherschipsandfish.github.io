@@ -23,6 +23,11 @@
         .switch p { color:var(--muted); margin-top:4px; }
         .switch h2 { font-family:Fraunces,serif; font-size:1.25rem; }
         .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; margin:10px 0; }
+        .slot { color:var(--gold); font-family:Fraunces,serif; font-size:2rem; font-weight:700; line-height:1; }
+        .kind { display:inline-block; margin-top:8px; border-radius:999px; padding:4px 10px; font-weight:700; font-size:.85rem; }
+        .kind.pickup { background:var(--gold); color:var(--ink); }
+        .kind.delivery { background:#2f6fed; color:#fff; }
+        .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
         .dayline { padding:8px 0; border-top:1px solid var(--line); }
     </style>
 </head>
@@ -99,6 +104,13 @@
             <p style="margin-top:14px"><button id="saveArea" type="button">Save this circle</button></p>
             <div id="saved" style="margin-top:12px"></div>
         </div>
+        <div id="binBox" hidden>
+            <h2 style="margin-top:28px">Cancelled orders</h2>
+            <p class="lead">Pickup is gold. Delivery is blue. Restore puts that time back if nobody else has it. Delete removes it for good.</p>
+            <label for="binDay">Look up a day</label>
+            <input id="binDay" type="date">
+            <div id="bin"></div>
+        </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="order-config.js?v=5"></script>
@@ -157,6 +169,107 @@
             if (!from && !to) return null;
             if (!from || !to || from >= to) return false;
             return { from: from, to: to };
+        }
+        const CLOCK = {"4:30":"16:30","4:45":"16:45","5:00":"17:00","5:15":"17:15","5:30":"17:30","5:45":"17:45","6:00":"18:00","6:15":"18:15","6:30":"18:30","6:45":"18:45","7:00":"19:00"};
+        function londonDate() {
+            return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
+        }
+        function esc(value) {
+            return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
+                return "&#" + ch.charCodeAt(0) + ";";
+            });
+        }
+        function money(pence) { return "£" + (Number(pence || 0) / 100).toFixed(2); }
+        function clock(slot) { return CLOCK[slot] || slot || ""; }
+        function slotMinutes(slot) {
+            const shown = CLOCK[slot] || String(slot || "");
+            const bits = shown.split(":");
+            return (Number(bits[0]) || 0) * 60 + (Number(bits[1]) || 0);
+        }
+        function orderTime(order) {
+            const match = /^off-(\d{1,2}:\d{2})-/.exec(order.slot || "");
+            return match ? match[1] : order.slot;
+        }
+        function itemsOf(order) {
+            const items = Array.isArray(order.items) ? order.items : [];
+            return items.map((item) => esc(item.qty) + " × " + esc(item.name)).join("<br>");
+        }
+        async function loadBin() {
+            const box = document.getElementById("bin");
+            const day = document.getElementById("binDay").value || londonDate();
+            const picked = await client().from("orders").select("id,name,address,slot,items,total_pence,status").eq("day", day);
+            const dropped = await client().from("deliveries").select("id,name,address,slot,items,total_pence,status").eq("day", day);
+            if (picked.error) {
+                box.innerHTML = "<p class='lead'>Could not load pickup orders.</p>";
+                return;
+            }
+            const rows = [];
+            (picked.data || []).forEach((order) => {
+                if (order.status !== "cancelled" || order.slot === "ORDERS-OPEN" || order.slot === "ORDERS-OPEN-HALF") return;
+                rows.push({ kind: "pickup", order: order, time: orderTime(order) });
+            });
+            if (!dropped.error) {
+                (dropped.data || []).forEach((order) => {
+                    if (order.status !== "cancelled" || order.slot === "DELIVERY-OPEN" || order.slot === "DELIVERY-OPEN-HALF") return;
+                    rows.push({ kind: "delivery", order: order, time: order.slot });
+                });
+            }
+            rows.sort((a, b) => slotMinutes(a.time) - slotMinutes(b.time));
+            box.innerHTML = "";
+            if (!rows.length) {
+                box.innerHTML = "<p class='lead'>Nothing cancelled on " + esc(day) + ".</p>";
+                return;
+            }
+            rows.forEach((row) => {
+                const order = row.order;
+                const card = document.createElement("article");
+                card.className = "card";
+                const who = row.kind === "delivery"
+                    ? "<h2 style='font-family:Fraunces,serif;font-size:1.3rem;margin-top:8px'>" + esc(order.address) + "</h2><p>" + esc(order.name) + "</p>"
+                    : "<h2 style='font-family:Fraunces,serif;font-size:1.3rem;margin-top:8px'>" + esc(order.name) + "</h2><p>" + esc(order.address) + "</p>";
+                card.innerHTML = "<p class='slot'>" + esc(clock(row.time)) + "</p><p class='kind " + row.kind + "'>" + (row.kind === "delivery" ? "Delivery" : "Pickup") + "</p>" + who + "<p style='margin-top:8px'>" + itemsOf(order) + "</p><p>" + money(order.total_pence) + "</p>";
+                const actions = document.createElement("div");
+                actions.className = "actions";
+                const restore = document.createElement("button");
+                restore.type = "button";
+                restore.textContent = "Restore";
+                restore.onclick = () => restoreRow(row);
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "off";
+                remove.textContent = "Delete for good";
+                remove.onclick = () => removeRow(row);
+                actions.append(restore, remove);
+                card.appendChild(actions);
+                box.appendChild(card);
+            });
+        }
+        async function restoreRow(row) {
+            const note = document.getElementById("note");
+            const day = document.getElementById("binDay").value || londonDate();
+            if (row.kind === "pickup") {
+                const { data } = await client().from("orders").select("id,status").eq("day", day).eq("slot", row.time);
+                const taken = (data || []).some((item) => item.id !== row.order.id && item.status !== "cancelled");
+                if (taken) {
+                    note.textContent = clock(row.time) + " is already booked, so this pickup stays cancelled.";
+                    return;
+                }
+                const { error } = await client().from("orders").update({ status: "new", slot: row.time }).eq("id", row.order.id);
+                note.textContent = error ? (error.message || "Could not restore it.") : "Pickup at " + clock(row.time) + " is back on the board.";
+            } else {
+                const { error } = await client().from("deliveries").update({ status: "new" }).eq("id", row.order.id);
+                const clash = error && (error.code === "23505" || /duplicate|unique|conflict/i.test(error.message || ""));
+                note.textContent = clash ? "That delivery time is already booked, so this one stays cancelled." : (error ? (error.message || "Could not restore it.") : "Delivery at " + clock(row.time) + " is back on the run.");
+            }
+            loadBin();
+        }
+        async function removeRow(row) {
+            const label = row.kind === "delivery" ? "delivery" : "pickup";
+            if (!window.confirm("Delete this " + label + " order for good? It cannot be put back.")) return;
+            const table = row.kind === "delivery" ? "deliveries" : "orders";
+            const { error } = await client().from(table).delete().eq("id", row.order.id);
+            document.getElementById("note").textContent = error ? (error.message || "Could not delete it. The delete permission still needs to be added in Supabase.") : "Deleted for good.";
+            loadBin();
         }
         async function shopRow() {
             const { data, error } = await client().from("orders").select("id,status,slot").eq("day", "2099-01-01").in("slot", ["ORDERS-OPEN", "ORDERS-OPEN-HALF"]).order("created_at", { ascending: false });
@@ -267,6 +380,11 @@
             fillDay();
             paintSaved();
             await loadSwitches();
+            document.getElementById("binBox").hidden = false;
+            const binDay = document.getElementById("binDay");
+            if (!binDay.value) binDay.value = londonDate();
+            binDay.onchange = loadBin;
+            await loadBin();
         }
         document.getElementById("switchBtn").onclick = async () => {
             const button = document.getElementById("switchBtn");

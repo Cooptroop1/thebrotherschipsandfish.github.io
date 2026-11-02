@@ -21,6 +21,7 @@
         .card h2 { font-family:Fraunces,serif; font-size:1.6rem; }
         .slot { color:var(--gold); font-family:Fraunces,serif; font-size:2.6rem; font-weight:700; line-height:1; }
         .muted { color:var(--muted); }
+        .due { color:var(--gold); font-family:Fraunces,serif; font-size:2.2rem; font-weight:700; line-height:1; margin-top:10px; }
         .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
         .done { opacity:.55; }
         button.off { background:#3a3328; color:var(--paper); }
@@ -83,7 +84,7 @@
                 const card = document.createElement("article");
                 card.className = "card" + (order.status === "delivered" ? " done" : "");
                 const state = order.status === "out" ? "On the way" : (String(order.name || "").indexOf("Pay later") === 0 ? "Pay later" : order.status);
-                card.innerHTML = "<p class='slot'>" + esc(CLOCK[order.slot] || order.slot) + "</p><p class='muted'>" + esc(state) + "</p><h2>" + esc(order.address) + "</h2><p style='margin-top:8px'>" + esc(order.name) + "</p><p style='margin-top:8px'>" + itemsOf(order) + "</p><p class='muted'>" + money(order.total_pence) + "</p>";
+                card.innerHTML = "<p class='slot'>" + esc(CLOCK[order.slot] || order.slot) + "</p><p class='muted'>" + esc(state) + "</p><h2>" + esc(order.address) + "</h2><p style='margin-top:8px'>" + esc(order.name) + "</p><p style='margin-top:8px'>" + itemsOf(order) + "</p><p class='due'>" + money(order.total_pence) + "</p>";
                 const actions = document.createElement("div");
                 actions.className = "actions";
                 if (NEXT[order.status]) {

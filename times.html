@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
-    <title>Opening times | The Brothers Chips and Fish</title>
+    <title>Settings | The Brothers Chips and Fish</title>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root { --ink:#120e0b; --gold:#c9a227; --paper:#f4ead8; --card:#1c1713; --line:rgba(201,162,39,.28); --muted:#b9a894; }
@@ -34,8 +34,8 @@
 <body>
     <div class="wrap">
         <p><a href="/admin.html">Back to the queue</a></p>
-        <h1>Opening times</h1>
-        <p class="lead" id="note">Pick a day. One shift, or two if you are out twice. The order switches live here so the queue stays clear.</p>
+        <h1>Settings</h1>
+        <p class="lead" id="note">Pick a day, set the times, and write what the site should say for that day.</p>
         <div id="login">
             <label for="email">Email</label>
             <input id="email" type="email" autocomplete="username">
@@ -82,9 +82,11 @@
             </div>
         </div>
         <div class="card" id="editor" hidden>
-            <h2>Opening times</h2>
+            <h2>Days</h2>
             <label for="day">Day</label>
             <select id="day"></select>
+            <label for="place">What the site says</label>
+            <input id="place" type="text" maxlength="80" placeholder="Rashes Green, Toftwood">
             <p class="lead" style="margin-top:14px">First shift</p>
             <div class="pair">
                 <div><label for="from1">From</label><input id="from1" type="time"></div>
@@ -118,6 +120,11 @@
         const PAY = "https://brothers-pay.vercel.app/api/pay";
         let db = null;
         let hours = {};
+        let places = {
+            Wednesday: "Rashes Green, Toftwood",
+            Thursday: "Swanton Morley Village Hall",
+            Friday: "Dereham Hockey Club"
+        };
         let areas = { Wednesday: { miles: 2 }, Thursday: { miles: 1 }, Friday: { miles: 2, toftwood: false } };
         const CENTRES = {
             Wednesday: "Rashes Green, Toftwood",
@@ -136,7 +143,8 @@
         function paintSaved() {
             document.getElementById("saved").innerHTML = DAYS.map((day) => {
                 const line = textOf(hours[day]);
-                return "<p class='dayline'><strong>" + day + "</strong><br>" + (line || "Not out") + "</p>";
+                const place = places[day] ? "<br>" + places[day] : "";
+                return "<p class='dayline'><strong>" + day + "</strong>" + place + "<br>" + (line || "Not out") + "</p>";
             }).join("");
         }
         function fillDay() {
@@ -146,6 +154,7 @@
             document.getElementById("to1").value = list[0] ? list[0].to : "";
             document.getElementById("from2").value = list[1] ? list[1].from : "";
             document.getElementById("to2").value = list[1] ? list[1].to : "";
+            document.getElementById("place").value = places[day] || "";
             paintArea();
         }
         function paintArea() {
@@ -366,6 +375,7 @@
             });
             const data = await res.json();
             hours = (data && data.hours) || {};
+            if (data && data.places) places = data.places;
             const areaRes = await fetch(PAY, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -461,12 +471,17 @@
             if (second) shifts.push(second);
             if (shifts.length) next[day] = shifts;
             else delete next[day];
+            const nextPlaces = {};
+            DAYS.forEach((name) => { if (places[name]) nextPlaces[name] = places[name]; });
+            const written = document.getElementById("place").value.replace(/\s+/g, " ").trim().slice(0, 80);
+            if (written) nextPlaces[day] = written;
+            else delete nextPlaces[day];
             note.textContent = "Saving...";
             const session = (await client().auth.getSession()).data.session;
             const res = await fetch(PAY, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-                body: JSON.stringify({ action: "set-hours", hours: next })
+                body: JSON.stringify({ action: "set-hours", hours: next, places: nextPlaces })
             });
             const data = await res.json();
             if (!data || data.error) {
@@ -474,6 +489,7 @@
                 return;
             }
             hours = data.hours || next;
+            if (data.places) places = data.places;
             note.textContent = day + " saved.";
             fillDay();
             paintSaved();

@@ -106,6 +106,10 @@
         .mini { border:1px solid var(--line); background:transparent; color:var(--gold2); border-radius:999px; padding:6px 14px; font:inherit; font-weight:700; font-size:.9rem; cursor:pointer; }
         .mini.on { background:var(--gold); color:var(--ink); border-color:var(--gold); }
         .panel { max-width:420px; margin:0 0 14px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px 14px; }
+        #coverBox input { width:100%; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; }
+        #coverOut { margin-top:12px; }
+        #coverOut .yes { color:#b7e3a2; margin:4px 0; }
+        #coverOut .no { color:#e7b2a0; margin:4px 0; }
         .auth-msg { color:var(--gold2); font-weight:700; margin-top:10px; }
         #who { color:var(--gold2); font-weight:700; }
         @media (max-width: 800px) {
@@ -134,6 +138,14 @@
     </header>
     <div class="banner" id="banner" hidden><div class="wrap" id="bannerText">Orders are closed.</div></div>
     <main class="wrap">
+        <div class="panel" id="coverBox">
+            <h2 style="font-family:Fraunces,serif;font-size:1.45rem">Do we deliver?</h2>
+            <p class="lead">Check your postcode before you order.</p>
+            <label for="coverPost">Postcode</label>
+            <input id="coverPost" type="text" autocomplete="postal-code" inputmode="text">
+            <button class="go" id="coverGo" type="button">Check</button>
+            <div id="coverOut"></div>
+        </div>
         <p id="loginNote" hidden></p>
         <div id="gate" class="login panel">
             <div id="joinFields" hidden>
@@ -1020,6 +1032,31 @@
         document.getElementById("laterCode").addEventListener("keydown", function (event) {
             if (event.key === "Enter") { event.preventDefault(); sendLater(); }
         });
+        document.getElementById("coverPost").addEventListener("keydown", function (event) {
+            if (event.key === "Enter") { event.preventDefault(); document.getElementById("coverGo").click(); }
+        });
+        document.getElementById("coverGo").onclick = async function () {
+            const out = document.getElementById("coverOut");
+            const post = document.getElementById("coverPost").value.trim();
+            if (post.length < 5) {
+                out.textContent = "Type a full postcode.";
+                return;
+            }
+            out.textContent = "Checking...";
+            try {
+                const data = await payCall({ action: "cover", postcode: post });
+                if (!data || data.error || !data.days) {
+                    out.textContent = (data && data.error) || "Could not check that postcode.";
+                    return;
+                }
+                out.innerHTML = data.days.map(function (row) {
+                    if (row.ok) return "<p class='yes'><b>" + esc(row.day) + ".</b> Yes. " + esc(row.miles) + " miles from " + esc(row.place) + ".</p>";
+                    return "<p class='no'><b>" + esc(row.day) + ".</b> No. " + esc(row.miles) + " miles away. We go " + esc(row.limit) + " miles from " + esc(row.place) + ".</p>";
+                }).join("");
+            } catch (err) {
+                out.textContent = "Could not check that postcode. Try again.";
+            }
+        };
         document.getElementById("bar").onclick = openSheet;
         document.getElementById("bg").onclick = closeSheet;
         document.getElementById("chipBg").onclick = closeChips;

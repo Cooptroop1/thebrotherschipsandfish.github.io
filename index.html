@@ -632,14 +632,18 @@
                 body: JSON.stringify({ action: "hours" })
             }).then(function (res) { return res.json(); }).then(function (data) {
                 const hours = data && data.hours;
-                if (!hours) return;
+                const places = data && data.places;
+                if (!hours && !places) return;
                 stops.forEach(function (stop) {
-                    const list = hours[stop.day] || [];
+                    const list = (hours && hours[stop.day]) || [];
                     const time = list.length ? list.map(function (shift) { return shift.from + "–" + shift.to; }).join(" and ") : "No time set";
                     const line = document.getElementById("time-" + stop.day);
                     if (line) line.textContent = time;
+                    const name = (places && places[stop.day]) || stop.name;
+                    const heading = document.querySelector("[data-stop='" + stop.id + "'] h3");
+                    if (heading && places && places[stop.day]) heading.textContent = places[stop.day];
                     const link = "https://www.google.com/maps/dir/?api=1&destination=" + stop.lat + "," + stop.lon;
-                    markers[stop.id].setPopupContent('<div class="van-pop"><b>' + stop.day + '</b><br>' + stop.name + '<br>' + stop.address + '<br>' + time + '<br><a href="' + link + '" target="_blank" rel="noopener">Directions</a></div>');
+                    markers[stop.id].setPopupContent('<div class="van-pop"><b>' + stop.day + '</b><br>' + name + '<br>' + stop.address + '<br>' + time + '<br><a href="' + link + '" target="_blank" rel="noopener">Directions</a></div>');
                 });
             }).catch(function () {});
             var pins = { Wednesday: [52.6679644, 0.9489703], Thursday: [52.7133017, 0.9819041], Friday: [52.676854, 0.956835] };

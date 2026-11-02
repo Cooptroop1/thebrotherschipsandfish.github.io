@@ -1406,6 +1406,12 @@
             Thursday: [{ from: "16:00", to: "19:30" }],
             Friday: [{ from: "16:00", to: "19:00" }]
         };
+        let places = {
+            Wednesday: "Rashes Green, Toftwood",
+            Thursday: "Swanton Morley Village Hall",
+            Friday: "Dereham Hockey Club"
+        };
+        const WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
         function hoursText(day) {
             const list = vanHours[day] || [];
             if (!list.length) return "";
@@ -1413,26 +1419,27 @@
         }
         function placeCopy(open) {
             const day = londonWeekday();
-            const where = {
-                Wednesday: "Rashes Green, Toftwood",
-                Thursday: "Swanton Morley Village Hall",
-                Friday: "Dereham Hockey Club"
-            };
+            const place = (places[day] || "").trim();
             const times = hoursText(day);
-            const place = where[day];
             const when = times ? ", " + times : "";
+            const friday = day === "Friday" && /hockey/i.test(place);
             if (place && open) {
-                const extra = day === "Friday" ? " Greenfields Road, left into Honeysuckle Drive, through the gates on the right into the car park." : "";
+                const extra = friday ? " Greenfields Road, left into Honeysuckle Drive, through the gates on the right into the car park." : "";
                 return "Orders for pickup at " + place + when + "." + extra + " Tap + to add. £15 minimum, then pick a time.";
             }
-            if (place) {
-                const extra = day === "Friday" ? " Greenfields Road, left into Honeysuckle Drive, through the gates on the right." : "";
-                return "Orders are closed. Orders for pickup at " + place + when + ", when they are switched on." + extra;
+            if (place || times) {
+                const extra = friday ? " Greenfields Road, left into Honeysuckle Drive, through the gates on the right." : "";
+                return "Orders are closed. Orders for pickup at " + (place || "the stop") + when + ", when they are switched on." + extra;
             }
-            const wed = hoursText("Wednesday");
-            const thu = hoursText("Thursday");
-            const fri = hoursText("Friday");
-            return "Orders are closed today. Orders for pickup on Wednesday at Rashes Green, Toftwood" + (wed ? ", " + wed : "") + ". Thursday at Swanton Morley Village Hall" + (thu ? ", " + thu : "") + ". Friday at Dereham Hockey Club" + (fri ? ", " + fri : "") + ".";
+            const lines = WEEK.map((name) => {
+                const where = (places[name] || "").trim();
+                const slot = hoursText(name);
+                if (!where && !slot) return "";
+                return name + (where ? " at " + where : "") + (slot ? ", " + slot : "");
+            }).filter(Boolean);
+            return lines.length
+                ? "Orders are closed today. " + lines.join(". ") + "."
+                : "Orders are closed today.";
         }
         function serving() {
             return (ordersOpen || deliveryOpen) && serviceChosen;
@@ -1550,6 +1557,7 @@
                 });
                 const data = await res.json();
                 if (data && data.hours) vanHours = data.hours;
+                if (data && data.places) places = data.places;
             } catch (err) {}
             paintShop();
             draw();

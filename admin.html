@@ -23,6 +23,7 @@
         .split { display:grid; grid-template-columns:1.3fr .7fr; gap:18px; align-items:start; }
         .person { text-align:right; }
         .muted { color:var(--muted); }
+        .due { color:var(--gold); font-family:Fraunces,serif; font-size:2.2rem; font-weight:700; line-height:1; margin-top:10px; }
         .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
         .done { opacity:.55; }
         .switch { display:flex; justify-content:space-between; align-items:center; gap:12px; }
@@ -161,7 +162,7 @@
             rows.forEach((order) => {
                 const card = document.createElement("article");
                 card.className = "card" + (order.status === "collected" ? " done" : "");
-                card.innerHTML = "<div class='split'><div><p class='slot'>" + esc(clock(order.slot)) + "</p><p class='muted'>" + esc((order.status === "held" || order.status === "unpaid" || String(order.name || "").indexOf("Pay later") === 0) ? "Pay later" : order.status) + "</p><p style='margin-top:8px'>" + itemsOf(order) + "</p><p class='muted'>" + money(order.total_pence) + "</p></div><div class='person'><h2>" + esc(order.name) + "</h2><p>" + esc(order.address) + "</p></div></div>";
+                card.innerHTML = "<div class='split'><div><p class='slot'>" + esc(clock(order.slot)) + "</p><p class='muted'>" + esc((order.status === "held" || order.status === "unpaid" || String(order.name || "").indexOf("Pay later") === 0) ? "Pay later" : order.status) + "</p><p style='margin-top:8px'>" + itemsOf(order) + "</p><p class='due'>" + money(order.total_pence) + "</p></div><div class='person'><h2>" + esc(order.name) + "</h2><p>" + esc(order.address) + "</p></div></div>";
                 const actions = document.createElement("div");
                 actions.className = "actions";
                 if (NEXT[order.status] && String(order.id).indexOf("stripe:") !== 0) {

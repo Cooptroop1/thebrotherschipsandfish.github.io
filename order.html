@@ -140,7 +140,7 @@
     <main class="wrap">
         <div class="panel" id="coverBox">
             <h2 style="font-family:Fraunces,serif;font-size:1.45rem">Do we deliver?</h2>
-            <p class="lead">Check your postcode before you order.</p>
+            <p class="lead">Check your postcode first. Delivery is new and we are testing it. It is only on when we have a driver, so some days it will be off.</p>
             <label for="coverPost">Postcode</label>
             <input id="coverPost" type="text" autocomplete="postal-code" inputmode="text">
             <button class="go" id="coverGo" type="button">Check</button>
@@ -1055,9 +1055,9 @@
                     return;
                 }
                 out.innerHTML = data.days.map(function (row) {
-                    if (row.ok) return "<p class='yes'><b>" + esc(row.day) + ".</b> Yes. " + esc(row.miles) + " miles from " + esc(row.place) + ".</p>";
+                    if (row.ok) return "<p class='yes'><b>" + esc(row.day) + ".</b> Yes, you are in the area. " + esc(row.miles) + " miles from " + esc(row.place) + ".</p>";
                     return "<p class='no'><b>" + esc(row.day) + ".</b> No. " + esc(row.miles) + " miles away. We go " + esc(row.limit) + " miles from " + esc(row.place) + ".</p>";
-                }).join("");
+                }).join("") + "<p class='lead'>A yes only means the postcode is close enough. Delivery still has to be switched on that day.</p>";
             } catch (err) {
                 out.textContent = "Could not check that postcode. Try again.";
             }

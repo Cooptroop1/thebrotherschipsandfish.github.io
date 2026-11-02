@@ -82,6 +82,7 @@
             </div>
         </div>
         <div class="card" id="editor" hidden>
+            <h2>Opening times</h2>
             <label for="day">Day</label>
             <select id="day"></select>
             <p class="lead" style="margin-top:14px">First shift</p>
@@ -103,8 +104,6 @@
             </label>
             <p style="margin-top:14px"><button id="saveArea" type="button">Save this circle</button></p>
             <div id="saved" style="margin-top:12px"></div>
-        </div>
-        <div id="binBox" hidden>
             <h2 style="margin-top:28px">Cancelled orders</h2>
             <p class="lead">Pickup is gold. Delivery is blue. Restore puts that time back if nobody else has it. Delete removes it for good.</p>
             <label for="binDay">Look up a day</label>
@@ -380,7 +379,6 @@
             fillDay();
             paintSaved();
             await loadSwitches();
-            document.getElementById("binBox").hidden = false;
             const binDay = document.getElementById("binDay");
             if (!binDay.value) binDay.value = londonDate();
             binDay.onchange = loadBin;

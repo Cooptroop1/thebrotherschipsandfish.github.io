@@ -39,13 +39,6 @@
             <p style="margin-top:12px"><button id="go" type="button">Log in</button></p>
         </div>
         <div id="list"></div>
-        <h2 id="binTitle" hidden style="margin-top:28px;font-family:Fraunces,serif">Cancelled</h2>
-        <div id="binTools" hidden>
-            <p class="lead">These are off the run. Restore puts that time back if nobody else has it. Delete removes it for good.</p>
-            <label for="binDay">Look up a day</label>
-            <input id="binDay" type="date">
-        </div>
-        <div id="bin"></div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="order-config.js?v=5"></script>
@@ -109,60 +102,6 @@
                 card.appendChild(actions);
                 list.appendChild(card);
             });
-            await paintBin(data || []);
-        }
-        async function paintBin(today) {
-            const box = document.getElementById("bin");
-            const day = document.getElementById("binDay").value || londonDate();
-            let source = today;
-            if (day !== londonDate()) {
-                const older = await client().from("deliveries").select("id,name,address,slot,items,total_pence,status,created_at").eq("day", day).order("created_at");
-                if (older.error) {
-                    box.innerHTML = "<p class='lead'>Could not load that day.</p>";
-                    return;
-                }
-                source = older.data || [];
-            }
-            const rows = source.filter((order) => order.status === "cancelled" && order.slot !== "DELIVERY-OPEN" && order.slot !== "DELIVERY-OPEN-HALF");
-            rows.sort((a, b) => String(a.slot).localeCompare(String(b.slot)));
-            box.innerHTML = "";
-            if (!rows.length) {
-                box.innerHTML = "<p class='lead'>Nothing cancelled on " + esc(day) + ".</p>";
-                return;
-            }
-            rows.forEach((order) => {
-                const card = document.createElement("article");
-                card.className = "card done";
-                card.innerHTML = "<p class='slot'>" + esc(CLOCK[order.slot] || order.slot) + "</p><p class='muted'>Cancelled</p><h2>" + esc(order.address) + "</h2><p style='margin-top:8px'>" + esc(order.name) + "</p><p style='margin-top:8px'>" + itemsOf(order) + "</p><p class='muted'>" + money(order.total_pence) + "</p>";
-                const actions = document.createElement("div");
-                actions.className = "actions";
-                const restore = document.createElement("button");
-                restore.type = "button";
-                restore.textContent = "Restore";
-                restore.onclick = () => restoreOrder(order);
-                const remove = document.createElement("button");
-                remove.type = "button";
-                remove.className = "off";
-                remove.textContent = "Delete for good";
-                remove.onclick = () => removeOrder(order.id);
-                actions.append(restore, remove);
-                card.appendChild(actions);
-                box.appendChild(card);
-            });
-        }
-        async function restoreOrder(order) {
-            const { error } = await client().from("deliveries").update({ status: "new" }).eq("id", order.id);
-            const clash = error && (error.code === "23505" || /duplicate|unique|conflict/i.test(error.message || ""));
-            document.getElementById("note").textContent = clash
-                ? "That time is already booked, so this one stays cancelled."
-                : (error ? (error.message || "Could not restore it.") : "That delivery is back on the run.");
-            loadOrders();
-        }
-        async function removeOrder(id) {
-            if (!window.confirm("Delete this delivery for good? It cannot be put back.")) return;
-            const { error } = await client().from("deliveries").delete().eq("id", id);
-            document.getElementById("note").textContent = error ? (error.message || "Could not delete it. The delete permission still needs to be added in Supabase.") : "Deleted for good.";
-            loadOrders();
         }
         async function setStatus(id, status) {
             const { error } = await client().from("deliveries").update({ status }).eq("id", id);
@@ -178,11 +117,6 @@
                 return;
             }
             document.getElementById("note").textContent = "Deliveries for " + londonDate() + ". Pickup orders stay on the other page.";
-            document.getElementById("binTitle").hidden = false;
-            document.getElementById("binTools").hidden = false;
-            const binDay = document.getElementById("binDay");
-            if (!binDay.value) binDay.value = londonDate();
-            binDay.onchange = () => loadOrders();
             await loadOrders();
             clearInterval(timer);
             timer = setInterval(loadOrders, 8000);

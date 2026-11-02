@@ -1057,7 +1057,7 @@
                 out.innerHTML = data.days.map(function (row) {
                     if (row.ok) return "<p class='yes'><b>" + esc(row.day) + ".</b> Yes, you are in the area. " + esc(row.miles) + " miles from " + esc(row.place) + ".</p>";
                     return "<p class='no'><b>" + esc(row.day) + ".</b> No. " + esc(row.miles) + " miles away. We go " + esc(row.limit) + " miles from " + esc(row.place) + ".</p>";
-                }).join("") + "<p class='lead'>A yes only means the postcode is close enough. Delivery still has to be switched on that day.</p>";
+                }).join("") + "<p class='lead'>A yes only means the postcode is within our delivery area. Delivery still has to be switched on that day.</p>";
             } catch (err) {
                 out.textContent = "Could not check that postcode. Try again.";
             }

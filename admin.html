@@ -151,7 +151,7 @@
                     later = (data.orders || []).filter((order) => order.status === "held");
                 }
             } catch (err) {}
-            const rows = today.filter((order) => order.status !== "cancelled" && order.slot !== "ORDERS-OPEN" && order.slot !== "ORDERS-OPEN-HALF" && String(order.id).indexOf("stripe:") !== 0);
+            const rows = today.filter((order) => order.status !== "cancelled" && order.status !== "unpaid" && order.slot !== "ORDERS-OPEN" && order.slot !== "ORDERS-OPEN-HALF" && String(order.id).indexOf("stripe:") !== 0);
             const seen = {};
             rows.forEach((order) => { seen[order.slot] = true; });
             later.forEach((order) => { if (!seen[order.slot]) rows.push(order); });

@@ -204,7 +204,7 @@
             <span class="chip" id="modeChip">Pickup</span>
             <span class="chip" id="hoursChip">16:30–19:00</span>
             <span class="chip" id="gapChip">Every 15 min</span>
-            <span class="chip">£15 minimum</span>
+            <span class="chip">£15 to £100</span>
         </div>
         <h1 id="shopTitle">Order for pickup</h1>
         <p class="lead" id="placeLine">Tap + to add. The basket has to be at least £15 before a time can be booked. Then pick a pickup time. That time is taken straight away.</p>
@@ -380,6 +380,7 @@
         let cardSession = "";
         const money = (p) => "£" + (p / 100).toFixed(2);
         const MIN_PENCE = 1500;
+        const MAX_PENCE = 10000;
         function withKids(id, name) {
             const text = String(name || "");
             if (/kids/i.test(text)) return text;
@@ -683,8 +684,10 @@
             const food = foodPence();
             const fee = service === "delivery" ? 500 : 0;
             const short = Math.max(0, MIN_PENCE - food);
+            const big = food > MAX_PENCE;
             const over = canCount() > foodOrders() * 2;
             const bitsOut = bits.join("") + (fee ? "<div class='line'><span>Delivery</span><span>" + money(fee) + "</span></div>" : "") + "<div class='line'><strong>To pay</strong><strong>" + money(food + fee) + "</strong></div>";
+            if (big) return bitsOut + "<p class='empty'>Maximum order is £100. Take something off.</p>";
             if (over) return bitsOut + "<p class='empty'>Too many drinks. Take some off. 2 with each food order.</p>";
             if (drinkMsg) return bitsOut + "<p class='empty'>" + drinkMsg + "</p>";
             if (short) return bitsOut + "<p class='empty'>Add " + money(short) + " more. £15 minimum to book a time.</p>";
@@ -695,20 +698,22 @@
             const food = foodPence();
             const fee = service === "delivery" ? 500 : 0;
             const short = Math.max(0, MIN_PENCE - food);
+            const big = food > MAX_PENCE;
             const over = canCount() > foodOrders() * 2;
-            const ready = !short && !over;
+            const ready = !short && !over && !big;
             let goLabel = "Choose a time";
-            if (count() && over) goLabel = "Too many drinks";
+            if (count() && big) goLabel = "£100 maximum";
+            else if (count() && over) goLabel = "Too many drinks";
             else if (count() && short) goLabel = "Add " + money(short) + " more";
             else if (count() && !sessionUser) goLabel = "Login to book a slot";
             document.getElementById("desk").innerHTML = "<h2>Basket</h2>" + lines() + "<button class='go' type='button' id='deskGo'" + (count() && ready ? "" : " disabled") + ">" + goLabel + "</button>";
             const deskGo = document.getElementById("deskGo");
             if (deskGo) deskGo.onclick = openSheet;
             const bar = document.getElementById("bar");
-            bar.textContent = !count() ? "Basket is empty" : (over ? "Too many drinks. 2 with each food order." : (short ? ("Add " + money(short) + " to book a time") : (sessionUser ? ("Basket · " + count() + " · " + money(food + fee)) : "Login to book a slot")));
+            bar.textContent = !count() ? "Basket is empty" : (big ? "Maximum order is £100. Take something off." : (over ? "Too many drinks. 2 with each food order." : (short ? ("Add " + money(short) + " to book a time") : (sessionUser ? ("Basket · " + count() + " · " + money(food + fee)) : "Login to book a slot"))));
             document.getElementById("totals").innerHTML = count() ? lines() : "";
             document.getElementById("pay").textContent = count() ? ("Book " + money(food)) : "Add food first";
-            document.getElementById("pay").disabled = !count() || !held || over;
+            document.getElementById("pay").disabled = !count() || !held || over || food > MAX_PENCE;
             drawSlots();
         }
         function drawSlots() {
@@ -860,6 +865,10 @@
                 drawSlots();
                 return;
             }
+            if (foodPence() > MAX_PENCE) {
+                document.getElementById("hold").textContent = "Maximum order is £100. Take something off.";
+                return;
+            }
             if (foodPence() < MIN_PENCE) {
                 document.getElementById("hold").textContent = "Minimum order is £15 to book a time. Add more food first.";
                 return;
@@ -939,6 +948,10 @@
                 drawSlots();
                 return;
             }
+            if (foodPence() > MAX_PENCE) {
+                document.getElementById("hold").textContent = "Maximum order is £100. Take something off.";
+                return;
+            }
             if (foodPence() < MIN_PENCE) {
                 document.getElementById("hold").textContent = "Minimum order is £15 to book a time. Add more food first.";
                 return;
@@ -1005,7 +1018,7 @@
                 askAuth("Log in or sign up to book a time.");
                 return;
             }
-            if (!count() || foodPence() < MIN_PENCE) return;
+            if (!count() || foodPence() < MIN_PENCE || foodPence() > MAX_PENCE) return;
             if (service === "delivery") fillDrop();
             showTimes();
         }

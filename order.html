@@ -29,7 +29,7 @@
         .chip { border:1px solid var(--line); color:var(--gold2); border-radius:999px; padding:6px 12px; font-size:.82rem; font-weight:700; }
         h1 { font-family:Fraunces,Georgia,serif; font-size:clamp(1.8rem, 4vw, 2.6rem); margin:8px 0 4px; }
         .lead { color:var(--muted); max-width:40rem; }
-        .layout { display:grid; grid-template-columns:1fr 300px; gap:22px; align-items:start; padding:18px 0 120px; }
+        .layout { display:block; padding:0 0 120px; }
         @media (min-width: 801px) {
             .wrap { width: min(1240px, calc(100% - 32px)); }
             #menu { display:grid; grid-template-columns:1fr 1fr; column-gap:28px; align-items:start; }
@@ -106,10 +106,13 @@
         .mini { border:1px solid var(--line); background:transparent; color:var(--gold2); border-radius:999px; padding:6px 14px; font:inherit; font-weight:700; font-size:.9rem; cursor:pointer; }
         .mini.on { background:var(--gold); color:var(--ink); border-color:var(--gold); }
         .panel { max-width:420px; margin:0 0 14px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px 14px; }
-        .intro { display:grid; grid-template-columns:1fr minmax(280px, 380px); gap:22px; align-items:start; margin:18px 0 8px; }
-        .notice { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; }
+        .intro, .page { display:grid; grid-template-columns:1fr minmax(280px, 380px); grid-template-areas:"notice side" "main side"; column-gap:22px; row-gap:16px; align-items:stretch; margin:16px 0 8px; }
+        .notice { grid-area:notice; align-self:start; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; }
         .notice h2 { margin:0 0 8px; }
-        #coverBox { margin-top:36px; max-width:none; }
+        .side { grid-area:side; align-self:stretch; }
+        .maincol { grid-area:main; min-width:0; }
+        #coverBox { margin:0 0 16px; max-width:none; }
+        #desk[hidden] { display:none !important; }
         #coverBox input { width:100%; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; }
         #coverOut { margin-top:12px; }
         #coverOut .yes { color:#b7e3a2; margin:4px 0; }
@@ -117,12 +120,11 @@
         .auth-msg { color:var(--gold2); font-weight:700; margin-top:10px; }
         #who { color:var(--gold2); font-weight:700; }
         @media (max-width: 800px) {
-            .layout { grid-template-columns:1fr; padding-bottom:96px; }
+            .layout { padding-bottom:96px; }
+            .page { grid-template-columns:1fr; grid-template-areas:"notice" "side" "main"; }
             .basket { display:none; }
             .bar { display:flex; position:fixed; left:12px; right:12px; bottom:12px; z-index:30; background:var(--gold); color:var(--ink); border:0; border-radius:999px; padding:14px 18px; justify-content:space-between; font:inherit; font-weight:700; }
             .drinks { grid-template-columns:1fr 1fr; }
-            .intro { grid-template-columns:1fr; }
-            #coverBox { margin-top:0; }
         }
     </style>
 </head>
@@ -144,20 +146,23 @@
     </header>
     <div class="banner" id="banner" hidden><div class="wrap" id="bannerText">Orders are closed.</div></div>
     <main class="wrap">
-        <div class="intro">
+        <div class="page">
             <div class="notice">
                 <h2>Pickup</h2>
                 <p class="lead">This is a new service we are rolling out. We will try to have everything ready on time, but if we are really busy it might be slightly late. The cans might not be in stock, so you could have to choose something else when you get here.</p>
             </div>
-            <div class="panel" id="coverBox">
-                <h2 style="font-family:Fraunces,serif;font-size:1.45rem">Do we deliver?</h2>
-                <p class="lead">Check your postcode first. Delivery is new and we are testing it. It is only on when we have a driver, so some days it will be off.</p>
-                <label for="coverPost">Postcode</label>
-                <input id="coverPost" type="text" autocomplete="postal-code" inputmode="text">
-                <button class="go" id="coverGo" type="button">Check</button>
-                <div id="coverOut"></div>
+            <div class="side">
+                <div class="panel" id="coverBox">
+                    <h2 style="font-family:Fraunces,serif;font-size:1.45rem">Do we deliver?</h2>
+                    <p class="lead">Check your postcode first. Delivery is new and we are testing it. It is only on when we have a driver, so some days it will be off.</p>
+                    <label for="coverPost">Postcode</label>
+                    <input id="coverPost" type="text" autocomplete="postal-code" inputmode="text">
+                    <button class="go" id="coverGo" type="button">Check</button>
+                    <div id="coverOut"></div>
+                </div>
+                <aside class="basket" id="desk"></aside>
             </div>
-        </div>
+            <div class="maincol">
         <p id="loginNote" hidden></p>
         <div id="gate" class="login panel">
             <div id="joinFields" hidden>
@@ -207,7 +212,9 @@
         <p class="lead" id="bookedNote"></p>
         <div class="layout">
             <div id="menu"></div>
-            <aside class="basket" id="desk"></aside>
+        </div>
+        </div>
+        </div>
         </div>
         </div>
         </div>
@@ -1553,6 +1560,7 @@
             document.getElementById("chooseBox").hidden = !(ordersOpen && deliveryOpen && !serviceChosen);
             document.getElementById("closedBox").hidden = ordersOpen || deliveryOpen;
             document.getElementById("openShop").hidden = !open;
+            document.getElementById("desk").hidden = !open;
             document.getElementById("banner").hidden = true;
             const bar = document.getElementById("bar");
             bar.hidden = !open;

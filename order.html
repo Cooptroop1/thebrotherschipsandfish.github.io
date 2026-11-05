@@ -106,6 +106,10 @@
         .mini { border:1px solid var(--line); background:transparent; color:var(--gold2); border-radius:999px; padding:6px 14px; font:inherit; font-weight:700; font-size:.9rem; cursor:pointer; }
         .mini.on { background:var(--gold); color:var(--ink); border-color:var(--gold); }
         .panel { max-width:420px; margin:0 0 14px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px 14px; }
+        .intro { display:grid; grid-template-columns:1fr minmax(280px, 380px); gap:22px; align-items:start; margin:18px 0 8px; }
+        .notice { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; }
+        .notice h2 { margin:0 0 8px; }
+        #coverBox { margin-top:36px; max-width:none; }
         #coverBox input { width:100%; background:#120e0b; color:var(--paper); border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; }
         #coverOut { margin-top:12px; }
         #coverOut .yes { color:#b7e3a2; margin:4px 0; }
@@ -117,6 +121,8 @@
             .basket { display:none; }
             .bar { display:flex; position:fixed; left:12px; right:12px; bottom:12px; z-index:30; background:var(--gold); color:var(--ink); border:0; border-radius:999px; padding:14px 18px; justify-content:space-between; font:inherit; font-weight:700; }
             .drinks { grid-template-columns:1fr 1fr; }
+            .intro { grid-template-columns:1fr; }
+            #coverBox { margin-top:0; }
         }
     </style>
 </head>
@@ -138,13 +144,19 @@
     </header>
     <div class="banner" id="banner" hidden><div class="wrap" id="bannerText">Orders are closed.</div></div>
     <main class="wrap">
-        <div class="panel" id="coverBox">
-            <h2 style="font-family:Fraunces,serif;font-size:1.45rem">Do we deliver?</h2>
-            <p class="lead">Check your postcode first. Delivery is new and we are testing it. It is only on when we have a driver, so some days it will be off.</p>
-            <label for="coverPost">Postcode</label>
-            <input id="coverPost" type="text" autocomplete="postal-code" inputmode="text">
-            <button class="go" id="coverGo" type="button">Check</button>
-            <div id="coverOut"></div>
+        <div class="intro">
+            <div class="notice">
+                <h2>Pickup</h2>
+                <p class="lead">This is a new service we are rolling out. We will try to have everything ready on time, but if we are really busy it might be slightly late. The cans might not be in stock, so you could have to choose something else when you get here.</p>
+            </div>
+            <div class="panel" id="coverBox">
+                <h2 style="font-family:Fraunces,serif;font-size:1.45rem">Do we deliver?</h2>
+                <p class="lead">Check your postcode first. Delivery is new and we are testing it. It is only on when we have a driver, so some days it will be off.</p>
+                <label for="coverPost">Postcode</label>
+                <input id="coverPost" type="text" autocomplete="postal-code" inputmode="text">
+                <button class="go" id="coverGo" type="button">Check</button>
+                <div id="coverOut"></div>
+            </div>
         </div>
         <p id="loginNote" hidden></p>
         <div id="gate" class="login panel">
